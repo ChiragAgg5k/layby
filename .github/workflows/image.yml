@@ -6,9 +6,14 @@ name: image
 on:
   push:
     branches: [main]
+    # The build definition is produced by the sbx binary itself, so anything
+    # that changes the binary can change the image.
     paths:
       - 'examples/**'
-      - 'internal/image/**'
+      - 'internal/**'
+      - 'cmd/**'
+      - 'go.mod'
+      - 'go.sum'
       - '.github/workflows/image.yml'
   workflow_dispatch:
     inputs:

@@ -7,8 +7,9 @@ Think Cursor's cloud agents, but you pick the machine, you own the image, and th
 thing runs on your own metal if you want it to.
 
 > **Status:** early. The `local` (Docker) driver is complete and exercised end to end.
-> The `render` and `ssh` drivers are not implemented yet — the CLI reports that clearly
-> rather than failing halfway through.
+> The `render` driver is implemented but unverified — Render returns HTTP 402 until a
+> payment method is on file, so no sandbox has actually booted there yet. The `ssh`
+> driver is not written; the CLI says so rather than failing halfway through.
 
 ## Why
 
@@ -101,24 +102,29 @@ on `$?`. Human-readable progress goes to stderr; stdout stays clean.
 
 ## Measured
 
-Local Docker driver, Apple Silicon, `node = "22"` + `jq = "1.7.1"`:
+Blueprint: `node = "22"` + `jq = "1.7.1"`. Published image is **154 MB**.
 
 | Operation | Time |
 | --- | --- |
-| Cold build (empty layer cache) | 3m31s |
-| Rebuild (base layers cached, toolchain reinstalled) | 1m47s |
-| **Warm provision (image exists)** | **485ms** |
-| Boot only, image present | ~400ms |
+| Cold build, local Docker on Apple Silicon (empty layer cache) | 3m31s |
+| Rebuild, base layers cached | 1m47s |
+| **Cold build on GitHub Actions, linux/amd64, pushed to GHCR** | **46s** |
+| **Warm provision, local driver (image present)** | **485ms** |
 
-The warm number is a floor, not a forecast for a real provider: local Docker skips both the
-registry pull and VM scheduling. Those have to be measured against the provider itself.
+Building in CI rather than locally is not a small optimisation — it is 4.6x faster than the
+same cold build on an M-series laptop, and it is free.
+
+The 485ms warm number is a floor, not a forecast. The local driver skips both the registry
+pull and VM scheduling, which are exactly what will dominate on a real provider. Render
+numbers are still missing: service creation returns HTTP 402 until a card is on file.
 
 ## Roadmap
 
 - [x] Blueprint parsing, tool hashing, image build pipeline
 - [x] `local` Docker driver, full lifecycle
 - [x] TTL tracking, orphan reconciliation via `sbx doctor`
-- [ ] `render` driver — prebuilt image to a background worker, real cold-start numbers
+- [x] `render` driver — background worker from a prebuilt GHCR image
+- [ ] Verify the `render` driver end to end (blocked on Render billing, HTTP 402)
 - [ ] In-sandbox self-destruct daemon so a closed laptop cannot leak a paid instance
 - [ ] Spend ceiling — refuse `up` past a configured budget
 - [ ] `ssh` driver — point at a box you already own

@@ -16,6 +16,7 @@ type Provider interface {
 	Create(ctx context.Context, spec Specification) (Handle, error)
 	Status(ctx context.Context, handle Handle) (State, error)
 	Execute(ctx context.Context, handle Handle, command []string, output io.Writer) (int, error)
+	Shell(ctx context.Context, handle Handle) error
 	Destroy(ctx context.Context, handle Handle) error
 	List(ctx context.Context) ([]Handle, error)
 }

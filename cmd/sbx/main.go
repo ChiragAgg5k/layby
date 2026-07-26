@@ -19,7 +19,6 @@ import (
 	"github.com/chiragaggarwal/sbx/internal/blueprint"
 	"github.com/chiragaggarwal/sbx/internal/image"
 	"github.com/chiragaggarwal/sbx/internal/provider"
-	"github.com/chiragaggarwal/sbx/internal/provider/local"
 	"github.com/chiragaggarwal/sbx/internal/sandbox"
 )
 
@@ -77,18 +76,6 @@ func main() {
 	}
 }
 
-// resolve returns the driver for a blueprint. Only the local driver is wired
-// up today; render and ssh report a clear error rather than a nil dereference.
-func resolve(print *blueprint.Blueprint) (*local.Driver, error) {
-	switch print.Sandbox.Provider {
-	case blueprint.ProviderLocal:
-		return local.New(), nil
-	default:
-		return nil, fmt.Errorf("provider %q is not implemented yet; only %q is wired up",
-			print.Sandbox.Provider, blueprint.ProviderLocal)
-	}
-}
-
 func identifier() string {
 	buffer := make([]byte, 4)
 	if _, err := rand.Read(buffer); err != nil {
@@ -120,7 +107,7 @@ func commandUp(ctx context.Context, arguments []string) error {
 		print.Sandbox.TimeToLive.Duration = parsed
 	}
 
-	driver, err := resolve(print)
+	driver, err := driverFor(print.Sandbox.Provider)
 	if err != nil {
 		return err
 	}
@@ -199,7 +186,7 @@ func commandUp(ctx context.Context, arguments []string) error {
 // waitForReady polls until the provider reports the sandbox usable. Agents
 // need a machine-checkable readiness signal, not just a successful create
 // call, or they race the boot.
-func waitForReady(ctx context.Context, driver *local.Driver, handle provider.Handle) error {
+func waitForReady(ctx context.Context, driver provider.Provider, handle provider.Handle) error {
 	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		state, err := driver.Status(ctx, handle)
@@ -241,15 +228,14 @@ func commandList(ctx context.Context, arguments []string) error {
 		return nil
 	}
 
-	driver := local.New()
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(writer, "ID\tPROVIDER\tSTATE\tAGE\tTTL LEFT\tBLUEPRINT")
 
 	now := time.Now()
 	for _, record := range records {
 		state := provider.State("unknown")
-		if record.Handle.Provider == blueprint.ProviderLocal {
-			if observed, err := driver.Status(ctx, record.Handle); err == nil {
+		if driver, err := driverFor(record.Handle.Provider); err == nil {
+			if observed, statusError := driver.Status(ctx, record.Handle); statusError == nil {
 				state = observed
 			} else {
 				state = provider.StateNotFound
@@ -300,7 +286,10 @@ func commandRun(ctx context.Context, arguments []string) error {
 		return err
 	}
 
-	driver := local.New()
+	driver, err := driverFor(record.Handle.Provider)
+	if err != nil {
+		return err
+	}
 	// Plain -c, not --login: the image's ENV already carries the mise shim
 	// path, and sourcing /etc/profile would reset PATH and lose it.
 	shellCommand := []string{"bash", "-c", strings.Join(command, " ")}
@@ -326,7 +315,11 @@ func commandShell(ctx context.Context, arguments []string) error {
 	if err != nil {
 		return err
 	}
-	return local.New().Shell(ctx, record.Handle)
+	driver, err := driverFor(record.Handle.Provider)
+	if err != nil {
+		return err
+	}
+	return driver.Shell(ctx, record.Handle)
 }
 
 func commandDown(ctx context.Context, arguments []string) error {
@@ -374,9 +367,13 @@ func commandDown(ctx context.Context, arguments []string) error {
 		return nil
 	}
 
-	driver := local.New()
 	for _, record := range targets {
-		err := driver.Destroy(ctx, record.Handle)
+		driver, err := driverFor(record.Handle.Provider)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: %s: %v\n", record.Handle.Identifier, err)
+			continue
+		}
+		err = driver.Destroy(ctx, record.Handle)
 		if err != nil && !errors.Is(err, provider.ErrNotFound) {
 			fmt.Fprintf(os.Stderr, "warn: destroying %s: %v\n", record.Handle.Identifier, err)
 			continue
@@ -399,13 +396,18 @@ func findAnywhere(ctx context.Context, store *sandbox.Store, identifier string) 
 		return record, nil
 	}
 
-	handles, err := local.New().List(ctx)
-	if err != nil {
-		return sandbox.Record{}, err
-	}
-	for _, handle := range handles {
-		if handle.Identifier == identifier {
-			return sandbox.Record{Handle: handle, Blueprint: "(orphan)"}, nil
+	for name, driver := range drivers() {
+		handles, err := driver.List(ctx)
+		if err != nil {
+			// A provider we are not signed in to should not block destroying
+			// a sandbox that lives on one we are.
+			fmt.Fprintf(os.Stderr, "warn: listing %s: %v\n", name, err)
+			continue
+		}
+		for _, handle := range handles {
+			if handle.Identifier == identifier {
+				return sandbox.Record{Handle: handle, Blueprint: "(orphan)"}, nil
+			}
 		}
 	}
 	return sandbox.Record{}, fmt.Errorf("no sandbox %q in local state or on any provider", identifier)
@@ -447,26 +449,28 @@ func commandDoctor(ctx context.Context, arguments []string) error {
 		known[record.Handle.Identifier] = true
 	}
 
-	driver := local.New()
-	actual, err := driver.List(ctx)
-	if err != nil {
-		return err
-	}
+	// Reconcile every provider, not just the one the current blueprint names.
+	// An orphan on a provider you are not using today is exactly the one that
+	// keeps billing quietly.
+	seen := map[string]bool{}
+	for _, name := range sortedDriverNames() {
+		actual, err := drivers()[name].List(ctx)
+		if err != nil {
+			fmt.Printf("\nprovider %s: unavailable (%v)\n", name, err)
+			continue
+		}
 
-	fmt.Printf("\nprovider local: %d running, %d tracked locally\n", len(actual), len(records))
-
-	for _, handle := range actual {
-		if !known[handle.Identifier] {
-			fmt.Printf("  ORPHAN  %s is running but absent from local state — `sbx down %s`\n",
-				handle.Identifier, handle.Identifier)
-			problems++
+		fmt.Printf("\nprovider %s: %d running\n", name, len(actual))
+		for _, handle := range actual {
+			seen[handle.Identifier] = true
+			if !known[handle.Identifier] {
+				fmt.Printf("  ORPHAN  %s is running but absent from local state — `sbx down %s`\n",
+					handle.Identifier, handle.Identifier)
+				problems++
+			}
 		}
 	}
-
-	seen := map[string]bool{}
-	for _, handle := range actual {
-		seen[handle.Identifier] = true
-	}
+	fmt.Printf("\n%d sandbox(es) tracked locally\n", len(records))
 	now := time.Now()
 	for _, record := range records {
 		if !seen[record.Handle.Identifier] {

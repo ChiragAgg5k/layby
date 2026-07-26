@@ -6,6 +6,7 @@ import (
 
 	"github.com/chiragaggarwal/sbx/internal/blueprint"
 	"github.com/chiragaggarwal/sbx/internal/provider"
+	"github.com/chiragaggarwal/sbx/internal/provider/digitalocean"
 	"github.com/chiragaggarwal/sbx/internal/provider/local"
 	"github.com/chiragaggarwal/sbx/internal/provider/render"
 )
@@ -15,8 +16,9 @@ import (
 // interface without a cycle.
 func drivers() map[string]provider.Provider {
 	return map[string]provider.Provider{
-		blueprint.ProviderLocal:  local.New(),
-		blueprint.ProviderRender: render.New(),
+		blueprint.ProviderLocal:        local.New(),
+		blueprint.ProviderRender:       render.New(),
+		blueprint.ProviderDigitalOcean: digitalocean.New(),
 	}
 }
 
@@ -26,7 +28,7 @@ func driverFor(name string) (provider.Provider, error) {
 	if driver, found := drivers()[name]; found {
 		return driver, nil
 	}
-	return nil, fmt.Errorf("provider %q is not implemented; available: local, render", name)
+	return nil, fmt.Errorf("provider %q is not implemented; available: local, render, digitalocean", name)
 }
 
 // sortedDriverNames gives reconciliation a deterministic order so `sbx doctor`

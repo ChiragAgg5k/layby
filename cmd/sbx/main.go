@@ -141,6 +141,7 @@ func commandUp(ctx context.Context, arguments []string) error {
 		Region:      print.Sandbox.Region,
 		Environment: print.Env,
 		TimeToLive:  print.Sandbox.TimeToLive.Duration,
+		SSHKeys:     print.Sandbox.SSHKeys,
 		Labels:      map[string]string{"sbx.toolhash": print.ToolHash()},
 	})
 	if err != nil {

@@ -12,6 +12,9 @@ thing runs on your own metal if you want it to.
 > The `render` driver is implemented but unverified — Render returns HTTP 402 until a
 > payment method is on file, so no sandbox has actually booted there yet. The `ssh`
 > driver is not written; the CLI says so rather than failing halfway through.
+>
+> The `digitalocean` driver is implemented and its read-only paths are verified,
+> but no droplet has been booted yet.
 
 ## Why
 
@@ -45,7 +48,7 @@ jq = "1.7.1"
 NODE_ENV = "development"
 
 [sandbox]
-provider = "local"     # local | render | ssh
+provider = "local"     # local | digitalocean | render | ssh
 ttl = "1h"             # sandboxes destroy themselves
 idle_timeout = "20m"
 
@@ -120,11 +123,32 @@ The 485ms warm number is a floor, not a forecast. The local driver skips both th
 pull and VM scheduling, which are exactly what will dominate on a real provider. Render
 numbers are still missing: service creation returns HTTP 402 until a card is on file.
 
+## Providers
+
+| Provider | Billing | Boot | Snapshot | Per-sandbox keys |
+| --- | --- | --- | --- | --- |
+| `local` | free | ~400ms | no | n/a |
+| `digitalocean` | hourly, from $0.006/hr | sub-minute | yes | yes |
+| `render` | see plan | deploy-shaped, minutes | no | **no — account-level** |
+
+DigitalOcean is the better fit by some distance: hourly billing makes a per-task
+sandbox cost a fraction of a cent, tags are first-class so reconciliation never
+depends on a naming convention, and keys attach per droplet. Render has no
+create-a-machine primitive at all — a sandbox there is a background worker, and
+every sandbox is reachable by every SSH key on the account.
+
+**One deliberate gap on DigitalOcean:** there is no true in-sandbox
+self-destruct. Doing it properly means writing an API token onto a box that runs
+untrusted agent code, and a full-scope token is worse than an occasional orphan.
+cloud-init powers the droplet off at expiry, but a powered-off droplet still
+bills for its disk — `sbx down -expired` is what actually stops the meter.
+
 ## Roadmap
 
 - [x] Blueprint parsing, tool hashing, image build pipeline
 - [x] `local` Docker driver, full lifecycle
 - [x] TTL tracking, orphan reconciliation via `sbx doctor`
+- [x] `digitalocean` driver — droplet from a prebuilt GHCR image, hourly billing
 - [x] `render` driver — background worker from a prebuilt GHCR image
 - [ ] Verify the `render` driver end to end (blocked on Render billing, HTTP 402)
 - [ ] In-sandbox self-destruct daemon so a closed laptop cannot leak a paid instance

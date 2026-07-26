@@ -68,9 +68,6 @@ func (b *Blueprint) applyDefaults() {
 	if b.Sandbox.Size == "" {
 		b.Sandbox.Size = defaultSize
 	}
-	if b.Sandbox.Region == "" {
-		b.Sandbox.Region = defaultRegion
-	}
 	if b.Sandbox.TimeToLive.Duration == 0 {
 		b.Sandbox.TimeToLive.Duration = defaultTimeToLive
 	}
@@ -87,9 +84,9 @@ func (b *Blueprint) applyDefaults() {
 
 func (b *Blueprint) Validate() error {
 	switch b.Sandbox.Provider {
-	case ProviderLocal, ProviderRender, ProviderSSH:
+	case ProviderLocal, ProviderRender, ProviderDigitalOcean, ProviderSSH:
 	default:
-		return fmt.Errorf("unknown provider %q (want local, render or ssh)", b.Sandbox.Provider)
+		return fmt.Errorf("unknown provider %q (want local, render, digitalocean or ssh)", b.Sandbox.Provider)
 	}
 
 	if len(b.Tools) == 0 && b.Sandbox.Image == "" {

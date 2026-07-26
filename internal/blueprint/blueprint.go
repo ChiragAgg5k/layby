@@ -28,6 +28,7 @@ type Sandbox struct {
 	Provider    string            `toml:"provider"`
 	Size        string            `toml:"size"`
 	Region      string            `toml:"region"`
+	SSHKeys     []string          `toml:"ssh_keys"`
 	TimeToLive  Duration          `toml:"ttl"`
 	IdleTimeout Duration          `toml:"idle_timeout"`
 	Image       string            `toml:"image"`
@@ -55,12 +56,12 @@ type Hooks struct {
 }
 
 const (
-	ProviderLocal  = "local"
-	ProviderRender = "render"
-	ProviderSSH    = "ssh"
+	ProviderLocal        = "local"
+	ProviderRender       = "render"
+	ProviderDigitalOcean = "digitalocean"
+	ProviderSSH          = "ssh"
 
 	defaultSize        = "standard"
-	defaultRegion      = "oregon"
 	defaultTimeToLive  = 1 * time.Hour
 	defaultIdleTimeout = 30 * time.Minute
 	defaultDirectory   = "/workspace"

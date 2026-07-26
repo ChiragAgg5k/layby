@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/chiragaggarwal/sbx/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/provider"
 )
 
 // Record is the locally cached view of a sandbox. It is a cache and never the
@@ -30,7 +30,7 @@ func OpenStore() (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	directory := filepath.Join(base, ".sbx")
+	directory := filepath.Join(base, ".layby")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return nil, fmt.Errorf("creating state directory: %w", err)
 	}
@@ -110,5 +110,5 @@ func (s *Store) Find(identifier string) (Record, error) {
 			return record, nil
 		}
 	}
-	return Record{}, fmt.Errorf("no sandbox %q in local state (try `sbx doctor` to reconcile)", identifier)
+	return Record{}, fmt.Errorf("no sandbox %q in local state (try `layby doctor` to reconcile)", identifier)
 }

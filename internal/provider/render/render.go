@@ -25,19 +25,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chiragaggarwal/sbx/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/provider"
 )
 
 const (
 	driverName    = "render"
-	servicePrefix = "sbx-"
+	servicePrefix = "layby-"
 	serviceType   = "background_worker"
 
 	// environmentIdentifier is injected so a service can be recognised as ours
 	// from the provider side alone. Render has no free-form tagging, and
 	// reconciliation must not depend on the local state file.
-	environmentIdentifier = "SBX_IDENTIFIER"
-	environmentExpires    = "SBX_EXPIRES"
+	environmentIdentifier = "LAYBY_IDENTIFIER"
+	environmentExpires    = "LAYBY_EXPIRES"
 )
 
 // planBySize maps our normalized size onto Render plan names.

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/chiragaggarwal/sbx/internal/blueprint"
-	"github.com/chiragaggarwal/sbx/internal/provider"
-	"github.com/chiragaggarwal/sbx/internal/provider/digitalocean"
-	"github.com/chiragaggarwal/sbx/internal/provider/local"
-	"github.com/chiragaggarwal/sbx/internal/provider/render"
+	"github.com/chiragaggarwal/layby/internal/blueprint"
+	"github.com/chiragaggarwal/layby/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/provider/digitalocean"
+	"github.com/chiragaggarwal/layby/internal/provider/local"
+	"github.com/chiragaggarwal/layby/internal/provider/render"
 )
 
 // drivers is the registry of implemented providers. It lives in the command
@@ -31,7 +31,7 @@ func driverFor(name string) (provider.Provider, error) {
 	return nil, fmt.Errorf("provider %q is not implemented; available: local, render, digitalocean", name)
 }
 
-// sortedDriverNames gives reconciliation a deterministic order so `sbx doctor`
+// sortedDriverNames gives reconciliation a deterministic order so `layby doctor`
 // output is stable and diffable between runs.
 func sortedDriverNames() []string {
 	names := make([]string, 0, len(drivers()))

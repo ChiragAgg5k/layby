@@ -6,7 +6,7 @@ name: image
 on:
   push:
     branches: [main]
-    # The build definition is produced by the sbx binary itself, so anything
+    # The build definition is produced by the layby binary itself, so anything
     # that changes the binary can change the image.
     paths:
       - 'examples/**'
@@ -38,20 +38,20 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build sbx
-        run: go build -o bin/sbx ./cmd/sbx
+      - name: Build layby
+        run: go build -o bin/layby ./cmd/layby
 
       - name: Resolve image reference
         id: reference
         run: |
           # GHCR requires a lowercase namespace; the GitHub owner may not be.
           owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          reference=$(./bin/sbx image tag -f "$BLUEPRINT" -registry "ghcr.io/$owner")
+          reference=$(./bin/layby image tag -f "$BLUEPRINT" -registry "ghcr.io/$owner")
           echo "reference=$reference" >> "$GITHUB_OUTPUT"
           echo "Building $reference"
 
       - name: Materialise build context
-        run: ./bin/sbx image context build-context -f "$BLUEPRINT"
+        run: ./bin/layby image context build-context -f "$BLUEPRINT"
 
       - name: Log in to GHCR
         run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
@@ -60,7 +60,7 @@ jobs:
         run: |
           # Render runs amd64; the developer's laptop may not. Build for the
           # target platform explicitly rather than inheriting the runner's.
-          docker buildx create --use --name sbx-builder
+          docker buildx create --use --name layby-builder
           docker buildx build \
             --platform linux/amd64 \
             --tag '${{ steps.reference.outputs.reference }}' \

@@ -103,7 +103,7 @@ func (b *Blueprint) Validate() error {
 
 // sourceBuilders are mise tool specifications that compile from source rather
 // than fetching a prebuilt binary. Each one turns a fast image build into a
-// slow one, so `sbx doctor` surfaces them rather than letting the cost hide.
+// slow one, so `layby doctor` surfaces them rather than letting the cost hide.
 var sourceBuilders = map[string]string{
 	"python": "use a precompiled build, e.g. python = \"3.13\" resolves via the python-build backend and compiles; prefer `core:python` or an aqua/ubi backend",
 	"ruby":   "ruby-build compiles from source; expect several minutes on every image rebuild",
@@ -111,7 +111,7 @@ var sourceBuilders = map[string]string{
 	"erlang": "erlang compiles from source and is among the slowest builds",
 }
 
-// Warning is a non-fatal blueprint issue reported by `sbx doctor`.
+// Warning is a non-fatal blueprint issue reported by `layby doctor`.
 type Warning struct {
 	Subject string
 	Message string

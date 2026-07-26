@@ -26,7 +26,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/chiragaggarwal/sbx/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/provider"
 )
 
 const (
@@ -34,17 +34,17 @@ const (
 
 	// dropletPrefix and the tags below are the provider-side markers that make
 	// reconciliation possible without trusting local state.
-	dropletPrefix = "sbx-"
-	tagManaged    = "sbx"
-	tagPrefixID   = "sbx-id-"
-	tagPrefixTTL  = "sbx-expires-"
+	dropletPrefix = "layby-"
+	tagManaged    = "layby"
+	tagPrefixID   = "layby-id-"
+	tagPrefixTTL  = "layby-expires-"
 
 	// baseImage ships Docker preinstalled, which removes an apt install from
 	// every single boot.
 	baseImage = "docker-20-04"
 
 	// containerName is the single long-lived container each droplet runs.
-	containerName = "sbx"
+	containerName = "layby"
 
 	defaultRegion = "blr1"
 
@@ -85,7 +85,7 @@ func (d *Driver) Name() string { return driverName }
 // onto a box that runs untrusted agent code, and a full-scope token is far
 // worse than an occasional orphan. cloud-init powers the droplet off at expiry
 // as a backstop, but a powered-off droplet still bills for its disk — so
-// `sbx down -expired` remains the mechanism that actually stops the meter.
+// `layby down -expired` remains the mechanism that actually stops the meter.
 func (d *Driver) Capabilities() provider.Capabilities {
 	return provider.Capabilities{
 		Snapshot:              true,
@@ -112,7 +112,7 @@ func (d *Driver) Capabilities() provider.Capabilities {
 // whether the image has finished pulling.
 var cloudInit = template.Must(template.New("cloud-init").Parse(`#cloud-config
 write_files:
-  - path: /usr/local/bin/sbx-boot
+  - path: /usr/local/bin/layby-boot
     permissions: '0755'
     content: |
       #!/usr/bin/env bash
@@ -123,8 +123,8 @@ write_files:
         --env {{ . }} \
 {{- end }}
         {{ .Image }} sleep infinity
-      touch /run/sbx-ready
-  - path: /etc/systemd/system/sbx-expire.service
+      touch /run/layby-ready
+  - path: /etc/systemd/system/layby-expire.service
     content: |
       [Unit]
       Description=Power off this sandbox once its TTL has elapsed
@@ -132,10 +132,10 @@ write_files:
       Type=oneshot
       ExecStart=/usr/sbin/shutdown -h now
 runcmd:
-  - [ bash, -lc, "/usr/local/bin/sbx-boot 2>&1 | tee /var/log/sbx-boot.log" ]
+  - [ bash, -lc, "/usr/local/bin/layby-boot 2>&1 | tee /var/log/layby-boot.log" ]
   # A backstop only: this stops the workload but does not stop billing.
   # Destroying the droplet is what stops the meter.
-  - [ bash, -lc, "systemd-run --on-active={{ .ExpirySeconds }}s --unit=sbx-expire /usr/sbin/shutdown -h now" ]
+  - [ bash, -lc, "systemd-run --on-active={{ .ExpirySeconds }}s --unit=layby-expire /usr/sbin/shutdown -h now" ]
 `))
 
 type droplet struct {
@@ -246,7 +246,7 @@ func (d *Driver) Create(ctx context.Context, spec provider.Specification) (provi
 		return provider.Handle{}, fmt.Errorf("rendering cloud-init: %w", err)
 	}
 
-	userDataFile, err := os.CreateTemp("", "sbx-cloud-init-*.yaml")
+	userDataFile, err := os.CreateTemp("", "layby-cloud-init-*.yaml")
 	if err != nil {
 		return provider.Handle{}, err
 	}
@@ -312,7 +312,7 @@ func (d *Driver) Status(ctx context.Context, handle provider.Handle) (provider.S
 		if address == "" {
 			return provider.StatePending, nil
 		}
-		if err := d.secureShell(ctx, address, []string{"test", "-f", "/run/sbx-ready"}, io.Discard); err != nil {
+		if err := d.secureShell(ctx, address, []string{"test", "-f", "/run/layby-ready"}, io.Discard); err != nil {
 			return provider.StatePending, nil
 		}
 		return provider.StateReady, nil
@@ -442,9 +442,9 @@ func (d *Driver) address(ctx context.Context, handle provider.Handle) (string, e
 func controlPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "/tmp/sbx-cm-%C"
+		return "/tmp/layby-cm-%C"
 	}
-	directory := filepath.Join(home, ".sbx", "ssh")
+	directory := filepath.Join(home, ".layby", "ssh")
 	_ = os.MkdirAll(directory, 0o700)
 	return filepath.Join(directory, "cm-%C")
 }

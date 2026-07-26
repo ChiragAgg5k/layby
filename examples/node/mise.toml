@@ -1,6 +1,6 @@
 # A blueprint is an ordinary mise.toml. The [tools] and [env] tables are
 # standard mise and work with a plain `mise install` on your laptop; the
-# [sandbox] table is sbx's namespaced extension, which mise ignores.
+# [sandbox] table is layby's namespaced extension, which mise ignores.
 
 [tools]
 node = "22"
@@ -8,7 +8,7 @@ jq = "1.7.1"
 
 [env]
 NODE_ENV = "development"
-SBX_EXAMPLE = "node"
+LAYBY_EXAMPLE = "node"
 
 [sandbox]
 provider = "local"

@@ -40,7 +40,7 @@ func TestShellQuoteNeutralisesInjection(t *testing.T) {
 
 func TestIdentifierFromTagsPrefersTag(t *testing.T) {
 	tags := []string{tagManaged, tagPrefixID + "abc123", tagPrefixTTL + "1700000000"}
-	if got := identifierFromTags(tags, "sbx-wrongname"); got != "abc123" {
+	if got := identifierFromTags(tags, "layby-wrongname"); got != "abc123" {
 		t.Errorf("identifier = %q, want abc123", got)
 	}
 }
@@ -48,7 +48,7 @@ func TestIdentifierFromTagsPrefersTag(t *testing.T) {
 // Reconciliation must still recognise a droplet whose tags were stripped, or
 // a half-created sandbox becomes invisible and bills forever.
 func TestIdentifierFromTagsFallsBackToName(t *testing.T) {
-	if got := identifierFromTags(nil, "sbx-fallback"); got != "fallback" {
+	if got := identifierFromTags(nil, "layby-fallback"); got != "fallback" {
 		t.Errorf("identifier = %q, want fallback", got)
 	}
 }
@@ -99,7 +99,7 @@ func TestCloudInitSignalsReadinessAfterContainerStarts(t *testing.T) {
 
 	script := rendered.String()
 	pull := strings.Index(script, "docker pull")
-	ready := strings.Index(script, "touch /run/sbx-ready")
+	ready := strings.Index(script, "touch /run/layby-ready")
 	if pull == -1 || ready == -1 {
 		t.Fatalf("cloud-init missing pull or readiness marker:\n%s", script)
 	}
@@ -130,7 +130,7 @@ func TestAPIErrorDetailJoinsMultiple(t *testing.T) {
 }
 
 func TestAPIErrorDetailIgnoresNonErrorPayloads(t *testing.T) {
-	for _, payload := range []string{`[{"id":1,"name":"sbx-abc"}]`, `null`, ``, `not json`} {
+	for _, payload := range []string{`[{"id":1,"name":"layby-abc"}]`, `null`, ``, `not json`} {
 		if got := apiErrorDetail([]byte(payload)); got != "" {
 			t.Errorf("payload %q produced spurious detail %q", payload, got)
 		}
@@ -163,7 +163,7 @@ func TestNoSizeMapsToASlugBelowTheImageMinimumDisk(t *testing.T) {
 // arrived as `bash -c a; b`, which ran `b` on the droplet host rather than
 // inside the sandbox — the container's jq 1.7.1 silently became the host's 1.6.
 func TestRemoteCommandKeepsCompoundCommandsIntact(t *testing.T) {
-	rendered := remoteCommand([]string{"docker", "exec", "sbx", "bash", "-c", "node --version; jq --version"})
+	rendered := remoteCommand([]string{"docker", "exec", "layby", "bash", "-c", "node --version; jq --version"})
 
 	// The compound script must survive as a single quoted argument.
 	if !strings.Contains(rendered, `'node --version; jq --version'`) {
@@ -178,7 +178,7 @@ func TestRemoteCommandKeepsCompoundCommandsIntact(t *testing.T) {
 }
 
 func TestRemoteCommandQuotesEveryWord(t *testing.T) {
-	rendered := remoteCommand([]string{"docker", "exec", "sbx", "echo", "hello world"})
+	rendered := remoteCommand([]string{"docker", "exec", "layby", "echo", "hello world"})
 	if !strings.Contains(rendered, `'hello world'`) {
 		t.Errorf("argument with a space was not quoted: %s", rendered)
 	}

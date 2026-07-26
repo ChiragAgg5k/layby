@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sbx — disposable sandboxes from a mise.toml</title>
+<title>layby — disposable sandboxes from a mise.toml</title>
 <meta name="description" content="Declarative, disposable sandbox environments defined by a mise.toml, provisioned on infrastructure you choose, and destroyed on a timer.">
-<meta property="og:title" content="sbx — disposable sandboxes from a mise.toml">
+<meta property="og:title" content="layby — disposable sandboxes from a mise.toml">
 <meta property="og:description" content="Cloud agents, but you pick the machine and own the image.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0b0c'/><text y='74' x='50' font-size='68' font-family='monospace' fill='%23ffb000' text-anchor='middle'>%3E</text></svg>">
@@ -178,23 +178,24 @@
 
 <header>
   <div class="wrap bar">
-    <div class="logo">sbx<span class="caret">_</span></div>
+    <div class="logo">layby<span class="caret">_</span></div>
     <nav>
       <a href="#how">How</a>
       <a href="#measured">Measured</a>
+      <a href="#providers">Providers</a>
       <a href="#design">Design</a>
-      <a href="https://github.com/ChiragAgg5k/sbx">GitHub</a>
+      <a href="https://github.com/ChiragAgg5k/layby">GitHub</a>
     </nav>
   </div>
 </header>
 
 <div class="wrap">
   <div class="hero">
-    <div class="status rise"><span class="dot"></span> local driver working · render driver unverified</div>
+    <div class="status rise"><span class="dot"></span> verified on digitalocean · render blocked on billing</div>
     <h1 class="rise">Disposable sandboxes<br>from a <em>mise.toml</em></h1>
     <p class="lede rise">Cloud agent products hand you someone else's environment on someone else's machine. This inverts it: the environment is a file in your repo, and the machine is whichever provider you point at.</p>
     <div class="cta rise">
-      <a class="btn" href="https://github.com/ChiragAgg5k/sbx">View source</a>
+      <a class="btn" href="https://github.com/ChiragAgg5k/layby">View source</a>
       <a class="btn ghost" href="#how">How it works</a>
     </div>
   </div>
@@ -202,26 +203,33 @@
 
 <div class="wrap">
   <figure class="term rise">
-    <div class="term-bar"><span></span><span></span><span></span><div class="term-title">~/project — sbx</div></div>
-    <pre><code><span class="p">$</span> <span class="c">sbx up</span>
-<span class="o">image  sbx-base:5910fe84f5531946 (cached)</span>
-<span class="o">ready  e45358fc in <span class="ok">485ms</span> (build 83ms, boot 401ms)</span>
-<span class="o">expires 2:56PM</span>
-<span class="ok">e45358fc</span>
+    <div class="term-bar"><span></span><span></span><span></span><div class="term-title">~/project — provider = "digitalocean"</div></div>
+    <pre><code><span class="p">$</span> <span class="c">layby up</span>
+<span class="o">image  ghcr.io/chiragagg5k/layby-base:5910fe84f5531946 (cached)</span>
+<span class="o">ready  b41a0ccd in <span class="ok">2m44.945s</span></span>
+<span class="o">expires 3:53PM</span>
+<span class="ok">b41a0ccd</span>
 
-<span class="p">$</span> <span class="c">sbx run e45358fc -- node --version</span>
+<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'node --version; jq --version'</span>
 <span class="o">v22.23.1</span>
+<span class="o">jq-1.7.1</span>
 
-<span class="p">$</span> <span class="c">sbx run e45358fc -- 'exit 42'; echo $?</span>
+<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'hostname; head -1 /etc/os-release'</span>
+<span class="o">ccb57242a3e7</span>
+<span class="o">PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"   <span class="mark"># our image, not the host</span></span>
+
+<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'exit 42'; echo $?</span>
 <span class="o">42</span>
 
-<span class="p">$</span> <span class="c">sbx doctor</span>
-<span class="o">provider local: 1 running</span>
-<span class="o">  <span class="no">ORPHAN</span>  deadbeef is running but absent from local state</span>
-<span class="o">  <span class="no">EXPIRED</span> 8ba1d667 outlived its TTL — `sbx down -expired`</span>
+<span class="p">$</span> <span class="c">layby doctor</span>
+<span class="o">provider digitalocean: 1 running</span>
+<span class="o">provider local: 0 running</span>
+<span class="o">provider render: 0 running</span>
+<span class="ok">all clear</span>
 
-<span class="p">$</span> <span class="c">sbx down -all</span>
-<span class="o">destroyed e45358fc</span></code></pre>
+<span class="p">$</span> <span class="c">layby down -all</span>
+<span class="o">destroyed b41a0ccd</span>
+<span class="o">402 account droplets untouched</span></code></pre>
   </figure>
 </div>
 
@@ -266,35 +274,62 @@ verify = [<span class="ok">"npm test"</span>]</code></pre>
         <tr><td>Rebuild — base layers cached</td><td>1m 47s</td></tr>
         <tr class="hi"><td>Cold build — GitHub Actions, linux/amd64, pushed to GHCR</td><td>46s</td></tr>
         <tr class="hi"><td>Warm provision — local driver, image present</td><td>485ms</td></tr>
+        <tr class="hi"><td>Cold boot — DigitalOcean, clean slate to usable sandbox</td><td>2m 45s</td></tr>
         <tr><td>Published image size</td><td>154 MB</td></tr>
       </tbody>
     </table>
-    <p class="caption">Building in CI rather than locally is <span class="mark">4.6× faster</span> than the same cold build on an M-series laptop — and free. The 485ms figure is a floor, not a forecast: the local driver skips the registry pull and VM scheduling that will dominate on a real provider.</p>
+    <p class="caption">Building in CI rather than locally is <span class="mark">4.6× faster</span> than the same cold build on an M-series laptop — and free. The DigitalOcean figure is the honest end-to-end cost on real infrastructure: droplet provision (~45s), boot, then cloud-init pulling 154 MB and starting the container. Measured from a clean slate in <code>blr1</code> on <code>s-1vcpu-1gb</code> at <span class="mark">$0.0089/hr</span> — that sandbox cost well under a cent. Once running, exec is instant: connections multiplex, so a burst of twelve commands reuses one TCP session.</p>
+  </section>
+
+  <section id="providers">
+    <p class="eyebrow">Pick your machine</p>
+    <h2>Three providers, honestly compared</h2>
+    <table class="tbl">
+      <thead><tr><th>Provider</th><th>Billing</th><th>Boot</th><th>Snapshot</th><th>Per-sandbox keys</th></tr></thead>
+      <tbody>
+        <tr><td><code>local</code></td><td>free</td><td>485ms</td><td>no</td><td>n/a</td></tr>
+        <tr class="hi"><td><code>digitalocean</code></td><td>hourly, $0.0089/hr</td><td>2m 45s</td><td>yes</td><td>yes</td></tr>
+        <tr><td><code>render</code></td><td>plan-based</td><td>deploy-shaped</td><td>no</td><td>no — account-level</td></tr>
+      </tbody>
+    </table>
+    <p class="caption">DigitalOcean wins by some distance. Hourly billing makes a per-task sandbox cost a fraction of a cent, tags are first-class so reconciliation never leans on a naming convention, and keys attach per droplet. Render has no create-a-machine primitive at all — a sandbox there is a background worker, and every one of them is reachable by every SSH key on the account.</p>
+    <p class="caption">One gap is deliberate: there is <span class="mark">no true in-sandbox self-destruct</span>. Doing it properly means writing an API token onto a box running untrusted agent code, and a full-scope token is worse than an occasional orphan. cloud-init powers the droplet off at TTL, but that stops the workload, not the billing — <code>layby down -expired</code> is what stops the meter.</p>
   </section>
 
   <section id="design">
     <p class="eyebrow">Load-bearing decisions</p>
-    <h2>Four things that were bugs first</h2>
+    <h2>Every one of these was a bug first</h2>
+    <p>Nine so far. These six changed the design rather than just the code — and the first was found only by running the thing on real infrastructure, not by any test that existed at the time.</p>
     <div class="notes">
       <div class="note">
-        <span class="n">01 — CACHE KEY</span>
+        <span class="n">01 — ISOLATION</span>
+        <h3>Commands ran on the host</h3>
+        <p><code>ssh</code> concatenates its trailing arguments into one remote shell string, so <code>bash -c "a; b"</code> arrived as <code>bash -c a; b</code> and ran <code>b</code> on the droplet host. It failed <em>quietly</em>: the sandbox's jq 1.7.1 silently became the host's 1.6.</p>
+      </div>
+      <div class="note">
+        <span class="n">02 — READINESS</span>
+        <h3>The poller DoS'd itself</h3>
+        <p>The Docker image ships <code>ufw 22/tcp LIMIT</code>, rejecting an IP after six connections in thirty seconds. Polling every 250ms tripped it in two. The refusals looked exactly like a droplet that never booted.</p>
+      </div>
+      <div class="note">
+        <span class="n">03 — TRANSPORT</span>
+        <h3>Multiplex, or lock yourself out</h3>
+        <p>Every exec opened a fresh connection and hit the same limit after six commands — an agent running a handful of steps would be locked out of its own sandbox. One control master fixes it, and makes exec instant.</p>
+      </div>
+      <div class="note">
+        <span class="n">04 — CACHE KEY</span>
         <h3>Hash the whole build definition</h3>
         <p>Keying the image tag on the toolchain alone meant a corrected Dockerfile silently reused the stale image. The fix appeared to do nothing — twice — before the cause was obvious.</p>
       </div>
       <div class="note">
-        <span class="n">02 — PATH</span>
+        <span class="n">05 — PATH</span>
         <h3>Exported twice, on purpose</h3>
         <p>A login shell sources <code>/etc/profile</code>, which resets <code>PATH</code> and discards the image's <code>ENV</code>. Without both, <code>run</code> and <code>shell</code> disagree about whether <code>node</code> exists.</p>
       </div>
       <div class="note">
-        <span class="n">03 — MISE SCOPE</span>
-        <h3>Global, not directory-scoped</h3>
-        <p>Shims resolve a version by walking up from the current directory, so a project-scoped config leaves tools invisible everywhere else — including the repo an agent works in.</p>
-      </div>
-      <div class="note">
-        <span class="n">04 — TRUTH</span>
+        <span class="n">06 — TRUTH</span>
         <h3>The provider, not local state</h3>
-        <p><code>~/.sbx/state.json</code> is a cache. A running sandbox with no local record is an orphan. A lost laptop should cost a reconciliation pass, not a leaked instance.</p>
+        <p><code>~/.layby/state.json</code> is a cache. A running sandbox with no local record is an orphan. Reconciliation is tag-scoped, so on an account with 402 droplets it sees exactly the ones it created.</p>
       </div>
     </div>
   </section>
@@ -304,16 +339,19 @@ verify = [<span class="ok">"npm test"</span>]</code></pre>
       <div>
         <p class="eyebrow">Status</p>
         <h2>Where it stands</h2>
-        <p>The Docker driver is complete and exercised end to end. The Render driver is written but has never booted a sandbox — Render returns <code class="no">HTTP 402</code> until a payment method is on file, and background workers have no free tier.</p>
-        <p class="dim" style="font-size:.85rem">Exit codes pass through, so an agent can run <code>sbx run $ID -- pytest</code> and branch on <code>$?</code>. Progress goes to stderr; stdout stays clean.</p>
+        <p>The Docker and DigitalOcean drivers are both verified end to end — provision, exec, env, exit codes, teardown. The Render driver is written but has never booted a sandbox: Render returns <code class="no">HTTP 402</code> until a payment method is on file, and background workers have no free tier.</p>
+        <p class="dim" style="font-size:.85rem">Exit codes pass through, so an agent can run <code>layby run $ID -- pytest</code> and branch on <code>$?</code>. Progress goes to stderr; stdout stays clean.</p>
+        <p class="dim" style="font-size:.85rem">Next lever on speed: a snapshot taken after the image pull would cut that 2m45s to roughly droplet-create time alone.</p>
       </div>
       <div>
         <ul class="road">
           <li class="done">Blueprint parsing, tool hashing, image pipeline</li>
           <li class="done">Local Docker driver, full lifecycle</li>
-          <li class="done">TTL tracking, orphan reconciliation</li>
+          <li class="done">TTL tracking, tag-scoped orphan reconciliation</li>
+          <li class="done">DigitalOcean driver — verified on real infrastructure</li>
           <li class="done">Render driver — worker from a prebuilt GHCR image</li>
           <li class="block">Verify Render end to end — blocked on billing</li>
+          <li class="todo">Snapshot after pull — cut cold boot to ~45s</li>
           <li class="todo">In-sandbox self-destruct daemon</li>
           <li class="todo">Spend ceiling — refuse <code>up</code> past a budget</li>
           <li class="todo">SSH driver — point at a box you own</li>
@@ -328,7 +366,7 @@ verify = [<span class="ok">"npm test"</span>]</code></pre>
 <footer>
   <div class="wrap foot">
     <div>Built with <a href="https://mise.jdx.dev/">mise</a> · Hosted on <a href="https://appwrite.io/products/sites">Appwrite Sites</a></div>
-    <div><a href="https://github.com/ChiragAgg5k/sbx">github.com/ChiragAgg5k/sbx</a></div>
+    <div><a href="https://github.com/ChiragAgg5k/layby">github.com/ChiragAgg5k/layby</a></div>
   </div>
 </footer>
 

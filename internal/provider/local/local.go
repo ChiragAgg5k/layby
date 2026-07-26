@@ -17,15 +17,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chiragaggarwal/sbx/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/provider"
 )
 
 const (
-	labelIdentifier = "sbx.identifier"
-	labelExpires    = "sbx.expires"
-	labelImage      = "sbx.image"
-	labelSize       = "sbx.size"
-	containerPrefix = "sbx-"
+	labelIdentifier = "layby.identifier"
+	labelExpires    = "layby.expires"
+	labelImage      = "layby.image"
+	labelSize       = "layby.size"
+	containerPrefix = "layby-"
 	driverName      = "local"
 )
 
@@ -196,7 +196,7 @@ func (d *Driver) List(ctx context.Context) ([]provider.Handle, error) {
 }
 
 // parseLabels splits the comma-separated key=value list docker ps emits. Label
-// values containing commas cannot round-trip through this format; sbx only
+// values containing commas cannot round-trip through this format; layby only
 // writes comma-free labels.
 func parseLabels(encoded string) map[string]string {
 	labels := map[string]string{}

@@ -1,4 +1,4 @@
-module github.com/chiragaggarwal/sbx
+module github.com/chiragaggarwal/layby
 
 go 1.26.5
 

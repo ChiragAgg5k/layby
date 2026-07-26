@@ -8,15 +8,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chiragaggarwal/sbx/internal/blueprint"
-	"github.com/chiragaggarwal/sbx/internal/image"
+	"github.com/chiragaggarwal/layby/internal/blueprint"
+	"github.com/chiragaggarwal/layby/internal/image"
 )
 
-const imageUsage = `sbx image — inspect and materialise a blueprint's build definition
+const imageUsage = `layby image — inspect and materialise a blueprint's build definition
 
 Usage:
-  sbx image tag     [-f mise.toml] [-registry ghcr.io/you]   print the image reference
-  sbx image context <dir> [-f mise.toml]                     write the build context
+  layby image tag     [-f mise.toml] [-registry ghcr.io/you]   print the image reference
+  layby image context <dir> [-f mise.toml]                     write the build context
 
 The context subcommand exists so CI can build exactly the definition the CLI
 would build locally, without reimplementing the template.
@@ -65,7 +65,7 @@ func imageContext(arguments []string) error {
 		return err
 	}
 	if len(positional) != 1 {
-		return errors.New("usage: sbx image context <dir> [-f mise.toml]")
+		return errors.New("usage: layby image context <dir> [-f mise.toml]")
 	}
 	directory := positional[0]
 

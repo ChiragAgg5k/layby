@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chiragaggarwal/sbx/internal/blueprint"
+	"github.com/chiragaggarwal/layby/internal/blueprint"
 )
 
 func fixture(tools map[string]string, packages []string) *blueprint.Blueprint {

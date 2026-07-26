@@ -1,4 +1,4 @@
-// Command sbx provisions declarative, disposable sandbox environments from a
+// Command layby provisions declarative, disposable sandbox environments from a
 // mise.toml blueprint.
 package main
 
@@ -16,23 +16,23 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/chiragaggarwal/sbx/internal/blueprint"
-	"github.com/chiragaggarwal/sbx/internal/image"
-	"github.com/chiragaggarwal/sbx/internal/provider"
-	"github.com/chiragaggarwal/sbx/internal/sandbox"
+	"github.com/chiragaggarwal/layby/internal/blueprint"
+	"github.com/chiragaggarwal/layby/internal/image"
+	"github.com/chiragaggarwal/layby/internal/provider"
+	"github.com/chiragaggarwal/layby/internal/sandbox"
 )
 
-const usage = `sbx — declarative disposable sandboxes from a mise.toml
+const usage = `layby — declarative disposable sandboxes from a mise.toml
 
 Usage:
-  sbx up      [-f mise.toml] [-ttl 1h]   provision a sandbox and wait until ready
-  sbx ls                                 list sandboxes with age and TTL remaining
-  sbx run     <id> -- <command...>       run a command, passthrough exit code
-  sbx shell   <id>                       interactive shell inside the sandbox
-  sbx down    <id> | -all | -expired     destroy sandboxes
-  sbx doctor  [-f mise.toml]             reconcile provider state, report orphans
-  sbx explain [-f mise.toml]             show resolved blueprint and generated Dockerfile
-  sbx image   tag|context                inspect or materialise the build definition
+  layby up      [-f mise.toml] [-ttl 1h]   provision a sandbox and wait until ready
+  layby ls                                 list sandboxes with age and TTL remaining
+  layby run     <id> -- <command...>       run a command, passthrough exit code
+  layby shell   <id>                       interactive shell inside the sandbox
+  layby down    <id> | -all | -expired     destroy sandboxes
+  layby doctor  [-f mise.toml]             reconcile provider state, report orphans
+  layby explain [-f mise.toml]             show resolved blueprint and generated Dockerfile
+  layby image   tag|context                inspect or materialise the build definition
 `
 
 func main() {
@@ -71,7 +71,7 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "sbx: %v\n", err)
+		fmt.Fprintf(os.Stderr, "layby: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -142,7 +142,7 @@ func commandUp(ctx context.Context, arguments []string) error {
 		Environment: print.Env,
 		TimeToLive:  print.Sandbox.TimeToLive.Duration,
 		SSHKeys:     print.Sandbox.SSHKeys,
-		Labels:      map[string]string{"sbx.toolhash": print.ToolHash()},
+		Labels:      map[string]string{"layby.toolhash": print.ToolHash()},
 	})
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func commandUp(ctx context.Context, arguments []string) error {
 		time.Since(built).Round(time.Millisecond))
 	fmt.Fprintf(os.Stderr, "expires %s\n", handle.ExpiresAt.Local().Format(time.Kitchen))
 
-	// The identifier alone goes to stdout so `ID=$(sbx up)` works in a script
+	// The identifier alone goes to stdout so `ID=$(layby up)` works in a script
 	// and an agent can branch on it without parsing human output.
 	fmt.Println(handle.Identifier)
 	return nil
@@ -283,7 +283,7 @@ func commandRun(ctx context.Context, arguments []string) error {
 		}
 	}
 	if separator == -1 || separator == 0 || separator == len(arguments)-1 {
-		return errors.New("usage: sbx run <id> -- <command...>")
+		return errors.New("usage: layby run <id> -- <command...>")
 	}
 
 	id := arguments[separator-1]
@@ -317,7 +317,7 @@ func commandRun(ctx context.Context, arguments []string) error {
 
 func commandShell(ctx context.Context, arguments []string) error {
 	if len(arguments) != 1 {
-		return errors.New("usage: sbx shell <id>")
+		return errors.New("usage: layby shell <id>")
 	}
 	store, err := sandbox.OpenStore()
 	if err != nil {
@@ -365,7 +365,7 @@ func commandDown(ctx context.Context, arguments []string) error {
 		}
 	default:
 		if len(positional) != 1 {
-			return errors.New("usage: sbx down <id> | -all | -expired")
+			return errors.New("usage: layby down <id> | -all | -expired")
 		}
 		record, err := findAnywhere(ctx, store, positional[0])
 		if err != nil {
@@ -476,7 +476,7 @@ func commandDoctor(ctx context.Context, arguments []string) error {
 		for _, handle := range actual {
 			seen[handle.Identifier] = true
 			if !known[handle.Identifier] {
-				fmt.Printf("  ORPHAN  %s is running but absent from local state — `sbx down %s`\n",
+				fmt.Printf("  ORPHAN  %s is running but absent from local state — `layby down %s`\n",
 					handle.Identifier, handle.Identifier)
 				problems++
 			}
@@ -490,7 +490,7 @@ func commandDoctor(ctx context.Context, arguments []string) error {
 			problems++
 		}
 		if record.Handle.Expired(now) {
-			fmt.Printf("  EXPIRED %s outlived its TTL — `sbx down -expired`\n", record.Handle.Identifier)
+			fmt.Printf("  EXPIRED %s outlived its TTL — `layby down -expired`\n", record.Handle.Identifier)
 			problems++
 		}
 	}

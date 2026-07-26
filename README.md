@@ -1,6 +1,6 @@
-# sbx
+# layby
 
-**[sbx.appwrite.network](https://sbx.appwrite.network)**
+**[layby.appwrite.network](https://layby.appwrite.network)**
 
 Declarative, disposable sandbox environments defined by a `mise.toml`, provisioned on
 infrastructure you choose, and destroyed on a timer.
@@ -29,7 +29,7 @@ same file that configures your laptop configures the sandbox.
 ## Install
 
 ```sh
-go build -o bin/sbx ./cmd/sbx
+go build -o bin/layby ./cmd/layby
 ```
 
 Requires Go 1.26+ and a running Docker daemon for the `local` driver.
@@ -60,21 +60,21 @@ verify = ["npm test"]
 ## Usage
 
 ```
-sbx up      [-f mise.toml] [-ttl 1h] [-rebuild]   provision and wait until ready
-sbx ls                                            list sandboxes with age and TTL remaining
-sbx run     <id> -- <command...>                  run a command, passthrough exit code
-sbx shell   <id>                                  interactive shell
-sbx down    <id> | -all | -expired                destroy sandboxes
-sbx doctor  [-f mise.toml]                        reconcile provider state, report orphans
-sbx explain [-f mise.toml]                        show resolved blueprint and Dockerfile
+layby up      [-f mise.toml] [-ttl 1h] [-rebuild]   provision and wait until ready
+layby ls                                            list sandboxes with age and TTL remaining
+layby run     <id> -- <command...>                  run a command, passthrough exit code
+layby shell   <id>                                  interactive shell
+layby down    <id> | -all | -expired                destroy sandboxes
+layby doctor  [-f mise.toml]                        reconcile provider state, report orphans
+layby explain [-f mise.toml]                        show resolved blueprint and Dockerfile
 ```
 
-`sbx up` prints only the sandbox identifier to stdout, so it composes:
+`layby up` prints only the sandbox identifier to stdout, so it composes:
 
 ```sh
-ID=$(sbx up)
-sbx run "$ID" -- npm test || echo "tests failed with $?"
-sbx down "$ID"
+ID=$(layby up)
+layby run "$ID" -- npm test || echo "tests failed with $?"
+layby down "$ID"
 ```
 
 ## Design notes
@@ -94,15 +94,15 @@ resolve a tool version by walking up from the current directory, so a project-sc
 leaves tools unresolvable anywhere else — including the repository an agent works in.
 
 **`PATH` is exported twice, on purpose.** Non-interactive `exec` picks it up from the image's
-`ENV`; a login shell sources `/etc/profile`, which resets `PATH`, so `/etc/profile.d/10-sbx.sh`
-re-exports it. Without both, `sbx run` and `sbx shell` disagree about whether `node` exists.
+`ENV`; a login shell sources `/etc/profile`, which resets `PATH`, so `/etc/profile.d/10-layby.sh`
+re-exports it. Without both, `layby run` and `layby shell` disagree about whether `node` exists.
 
-**The provider is the source of truth, not local state.** `~/.sbx/state.json` is a cache. A
-running sandbox with no local record is an orphan, and `sbx doctor` reports it — a lost laptop
-should cost a reconciliation pass, not a leaked instance. `sbx down` resolves identifiers
+**The provider is the source of truth, not local state.** `~/.layby/state.json` is a cache. A
+running sandbox with no local record is an orphan, and `layby doctor` reports it — a lost laptop
+should cost a reconciliation pass, not a leaked instance. `layby down` resolves identifiers
 against the provider too, so the orphan it reports is one you can actually destroy.
 
-**Exit codes pass through.** An agent has to be able to run `sbx run $ID -- pytest` and branch
+**Exit codes pass through.** An agent has to be able to run `layby run $ID -- pytest` and branch
 on `$?`. Human-readable progress goes to stderr; stdout stays clean.
 
 ## Measured
@@ -149,13 +149,13 @@ every sandbox is reachable by every SSH key on the account.
 self-destruct. Doing it properly means writing an API token onto a box that runs
 untrusted agent code, and a full-scope token is worse than an occasional orphan.
 cloud-init powers the droplet off at expiry, but a powered-off droplet still
-bills for its disk — `sbx down -expired` is what actually stops the meter.
+bills for its disk — `layby down -expired` is what actually stops the meter.
 
 ## Roadmap
 
 - [x] Blueprint parsing, tool hashing, image build pipeline
 - [x] `local` Docker driver, full lifecycle
-- [x] TTL tracking, orphan reconciliation via `sbx doctor`
+- [x] TTL tracking, orphan reconciliation via `layby doctor`
 - [x] `digitalocean` driver — droplet from a prebuilt GHCR image, hourly billing
 - [x] `render` driver — background worker from a prebuilt GHCR image
 - [ ] Verify the `render` driver end to end (blocked on Render billing, HTTP 402)

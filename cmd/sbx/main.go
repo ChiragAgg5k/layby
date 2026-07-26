@@ -33,6 +33,7 @@ Usage:
   sbx down    <id> | -all | -expired     destroy sandboxes
   sbx doctor  [-f mise.toml]             reconcile provider state, report orphans
   sbx explain [-f mise.toml]             show resolved blueprint and generated Dockerfile
+  sbx image   tag|context                inspect or materialise the build definition
 `
 
 func main() {
@@ -60,6 +61,8 @@ func main() {
 		err = commandDoctor(ctx, os.Args[2:])
 	case "explain":
 		err = commandExplain(ctx, os.Args[2:])
+	case "image":
+		err = commandImage(ctx, os.Args[2:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return

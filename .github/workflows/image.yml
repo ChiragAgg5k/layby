@@ -1,0 +1,75 @@
+name: image
+
+# Building the sandbox image here rather than on the target provider is the
+# whole cold-start strategy: `mise install` is the expensive step, GitHub's
+# runners are free, and Render then only has to pull.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'examples/**'
+      - 'internal/image/**'
+      - '.github/workflows/image.yml'
+  workflow_dispatch:
+    inputs:
+      blueprint:
+        description: Blueprint to build
+        default: examples/node/mise.toml
+
+env:
+  BLUEPRINT: ${{ github.event.inputs.blueprint || 'examples/node/mise.toml' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build sbx
+        run: go build -o bin/sbx ./cmd/sbx
+
+      - name: Resolve image reference
+        id: reference
+        run: |
+          # GHCR requires a lowercase namespace; the GitHub owner may not be.
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          reference=$(./bin/sbx image tag -f "$BLUEPRINT" -registry "ghcr.io/$owner")
+          echo "reference=$reference" >> "$GITHUB_OUTPUT"
+          echo "Building $reference"
+
+      - name: Materialise build context
+        run: ./bin/sbx image context build-context -f "$BLUEPRINT"
+
+      - name: Log in to GHCR
+        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      - name: Build and push
+        run: |
+          # Render runs amd64; the developer's laptop may not. Build for the
+          # target platform explicitly rather than inheriting the runner's.
+          docker buildx create --use --name sbx-builder
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag '${{ steps.reference.outputs.reference }}' \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --push \
+            build-context
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image published"
+            echo
+            echo '```'
+            echo '${{ steps.reference.outputs.reference }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

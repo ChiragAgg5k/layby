@@ -13,8 +13,11 @@ thing runs on your own metal if you want it to.
 > payment method is on file, so no sandbox has actually booted there yet. The `ssh`
 > driver is not written; the CLI says so rather than failing halfway through.
 >
-> The `digitalocean` driver is implemented and its read-only paths are verified,
-> but no droplet has been booted yet.
+> The `digitalocean` driver provisions a droplet successfully, but exec has not
+> been verified end to end: the development machine sits behind a full-tunnel
+> VPN that permits TCP to known destinations and drops it to arbitrary droplet
+> IPs, so SSH never connects. Not a driver defect, but it means no DigitalOcean
+> boot-to-ready number exists yet.
 
 ## Why
 

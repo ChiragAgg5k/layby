@@ -110,3 +110,50 @@ func TestCloudInitSignalsReadinessAfterContainerStarts(t *testing.T) {
 		t.Error("expiry backstop not wired to the TTL")
 	}
 }
+
+// doctl prints API failures as JSON on stdout and leaves stderr empty, so an
+// error assembled from stderr alone reported nothing at all — a 422 surfaced
+// as a bare "exit status 1".
+func TestAPIErrorDetailExtractsMessageFromStdout(t *testing.T) {
+	payload := []byte(`{"errors":[{"detail":"POST https://api.digitalocean.com/v2/droplets: 422 Cannot create a droplet with a smaller disk than the image."}]}`)
+	detail := apiErrorDetail(payload)
+	if !strings.Contains(detail, "smaller disk than the image") {
+		t.Errorf("detail = %q, want the 422 message", detail)
+	}
+}
+
+func TestAPIErrorDetailJoinsMultiple(t *testing.T) {
+	payload := []byte(`{"errors":[{"detail":"first"},{"detail":"second"}]}`)
+	if got := apiErrorDetail(payload); got != "first; second" {
+		t.Errorf("detail = %q, want \"first; second\"", got)
+	}
+}
+
+func TestAPIErrorDetailIgnoresNonErrorPayloads(t *testing.T) {
+	for _, payload := range []string{`[{"id":1,"name":"sbx-abc"}]`, `null`, ``, `not json`} {
+		if got := apiErrorDetail([]byte(payload)); got != "" {
+			t.Errorf("payload %q produced spurious detail %q", payload, got)
+		}
+	}
+}
+
+// The Docker marketplace image reports min_disk_size 25, and DigitalOcean
+// rejects a droplet whose disk is smaller than its image with a 422 rather
+// than degrading. The cheapest slug on the account has a 10GB disk, so
+// offering it would make `size = "small"` fail every time.
+func TestNoSizeMapsToASlugBelowTheImageMinimumDisk(t *testing.T) {
+	tooSmall := map[string]int{
+		"s-1vcpu-512mb-10gb": 10,
+	}
+	for spec, slug := range sizeBySpec {
+		if disk, known := tooSmall[slug]; known && disk < imageMinimumDisk {
+			t.Errorf("size %q maps to %s with a %dGB disk, below the image minimum of %dGB",
+				spec, slug, disk, imageMinimumDisk)
+		}
+	}
+	for _, spec := range []string{"small", "standard", "large"} {
+		if _, found := sizeBySpec[spec]; !found {
+			t.Errorf("size %q is not mapped", spec)
+		}
+	}
+}

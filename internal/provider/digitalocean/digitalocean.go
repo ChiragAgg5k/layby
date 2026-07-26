@@ -50,14 +50,20 @@ const (
 	sshOptions = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10"
 )
 
-// sizeBySpec maps our normalized size onto droplet slugs. The smallest is
-// under a cent an hour, which is what makes per-task sandboxes viable here in
-// a way they are not on a monthly-billed provider.
+// sizeBySpec maps our normalized size onto droplet slugs. Every slug here must
+// have at least imageMinimumDisk of disk: DigitalOcean rejects a droplet whose
+// disk is smaller than its image, and the cheapest slug on the account
+// (s-1vcpu-512mb-10gb) is exactly that case — it fails with a 422 rather than
+// degrading, so it is deliberately not offered.
 var sizeBySpec = map[string]string{
-	"small":    "s-1vcpu-512mb-10gb",
-	"standard": "s-1vcpu-2gb",
-	"large":    "s-2vcpu-4gb",
+	"small":    "s-1vcpu-1gb",
+	"standard": "s-2vcpu-2gb",
+	"large":    "s-4vcpu-8gb",
 }
+
+// imageMinimumDisk is the min_disk_size reported by the Docker marketplace
+// image, in gigabytes.
+const imageMinimumDisk = 25
 
 type Driver struct {
 	binary string
@@ -147,10 +153,38 @@ func (d *Driver) run(ctx context.Context, arguments ...string) ([]byte, error) {
 	command.Stderr = &stderr
 
 	if err := command.Run(); err != nil {
-		return nil, fmt.Errorf("doctl %s: %w: %s",
-			strings.Join(arguments, " "), err, strings.TrimSpace(stderr.String()))
+		// doctl reports API failures as JSON on stdout and leaves stderr
+		// empty, so an error built from stderr alone says nothing at all.
+		detail := strings.TrimSpace(stderr.String())
+		if extracted := apiErrorDetail(stdout.Bytes()); extracted != "" {
+			detail = extracted
+		}
+		if detail == "" {
+			detail = "no error detail reported"
+		}
+		return nil, fmt.Errorf("doctl %s: %s", strings.Join(arguments, " "), detail)
 	}
 	return stdout.Bytes(), nil
+}
+
+// apiErrorDetail pulls the human-readable message out of doctl's JSON error
+// envelope, which it prints on stdout rather than stderr.
+func apiErrorDetail(output []byte) string {
+	var envelope struct {
+		Errors []struct {
+			Detail string `json:"detail"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(output, &envelope); err != nil || len(envelope.Errors) == 0 {
+		return ""
+	}
+	details := make([]string, 0, len(envelope.Errors))
+	for _, item := range envelope.Errors {
+		if item.Detail != "" {
+			details = append(details, item.Detail)
+		}
+	}
+	return strings.Join(details, "; ")
 }
 
 func (d *Driver) Create(ctx context.Context, spec provider.Specification) (provider.Handle, error) {

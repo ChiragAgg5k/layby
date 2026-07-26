@@ -157,3 +157,59 @@ func TestNoSizeMapsToASlugBelowTheImageMinimumDisk(t *testing.T) {
 		}
 	}
 }
+
+// ssh concatenates its trailing arguments and hands the result to a remote
+// shell, so passing a command word-by-word loses all quoting. `bash -c "a; b"`
+// arrived as `bash -c a; b`, which ran `b` on the droplet host rather than
+// inside the sandbox — the container's jq 1.7.1 silently became the host's 1.6.
+func TestRemoteCommandKeepsCompoundCommandsIntact(t *testing.T) {
+	rendered := remoteCommand([]string{"docker", "exec", "sbx", "bash", "-c", "node --version; jq --version"})
+
+	// The compound script must survive as a single quoted argument.
+	if !strings.Contains(rendered, `'node --version; jq --version'`) {
+		t.Errorf("compound command was not kept as one argument: %s", rendered)
+	}
+	// A bare semicolon outside the quoted script would let the host shell run
+	// the second half itself.
+	beforeScript, _, _ := strings.Cut(rendered, `'node`)
+	if strings.Contains(beforeScript, ";") {
+		t.Errorf("unquoted separator leaks to the host shell: %s", rendered)
+	}
+}
+
+func TestRemoteCommandQuotesEveryWord(t *testing.T) {
+	rendered := remoteCommand([]string{"docker", "exec", "sbx", "echo", "hello world"})
+	if !strings.Contains(rendered, `'hello world'`) {
+		t.Errorf("argument with a space was not quoted: %s", rendered)
+	}
+	if strings.Contains(rendered, "echo hello world") {
+		t.Errorf("word boundaries were lost: %s", rendered)
+	}
+}
+
+func TestRemoteCommandNeutralisesHostEscape(t *testing.T) {
+	rendered := remoteCommand([]string{"bash", "-c", "true; touch /tmp/escaped"})
+	if strings.Contains(rendered, "; touch /tmp/escaped") &&
+		!strings.Contains(rendered, `'true; touch /tmp/escaped'`) {
+		t.Errorf("command could execute on the host: %s", rendered)
+	}
+}
+
+// Every exec opening a fresh TCP connection trips `ufw 22/tcp LIMIT` after six
+// connections in thirty seconds, so an agent running a handful of commands
+// locks itself out of its own sandbox.
+func TestSSHOptionsMultiplexConnections(t *testing.T) {
+	for _, required := range []string{"ControlMaster=auto", "ControlPersist"} {
+		if !strings.Contains(sshOptions, required) {
+			t.Errorf("ssh options missing %s: %s", required, sshOptions)
+		}
+	}
+	arguments := sshArguments("203.0.113.7")
+	joined := strings.Join(arguments, " ")
+	if !strings.Contains(joined, "ControlPath=") {
+		t.Errorf("no ControlPath supplied: %s", joined)
+	}
+	if arguments[len(arguments)-1] != "root@203.0.113.7" {
+		t.Errorf("destination must come last, got %q", arguments[len(arguments)-1])
+	}
+}

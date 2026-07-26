@@ -32,6 +32,16 @@ type Capabilities struct {
 	SubMinuteBoot         bool
 	PerSandboxCredentials bool
 	InteractiveShell      bool
+
+	// ReadinessPollInterval is how often a sandbox may be polled for
+	// readiness. It is not a performance knob: SSH-fronted providers sit
+	// behind rate limiters, and polling faster than this gets the *client*
+	// blocked, which is indistinguishable from the sandbox never booting.
+	ReadinessPollInterval time.Duration
+
+	// ReadinessTimeout is how long a sandbox may take to become usable
+	// before it is treated as failed.
+	ReadinessTimeout time.Duration
 }
 
 // Specification is the normalized creation request. Drivers map Size and

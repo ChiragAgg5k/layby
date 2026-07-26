@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -47,7 +48,13 @@ const (
 
 	defaultRegion = "blr1"
 
-	sshOptions = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10"
+	// Connections are multiplexed over a single master. Without this every
+	// exec opens a new TCP connection, and six within thirty seconds trips the
+	// image's `ufw 22/tcp LIMIT` rule — so an agent running a handful of
+	// commands locks itself out of its own sandbox.
+	sshOptions = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null " +
+		"-o LogLevel=ERROR -o ConnectTimeout=10 " +
+		"-o ControlMaster=auto -o ControlPersist=5m"
 )
 
 // sizeBySpec maps our normalized size onto droplet slugs. Every slug here must
@@ -88,6 +95,14 @@ func (d *Driver) Capabilities() provider.Capabilities {
 		SubMinuteBoot:         true,
 		PerSandboxCredentials: true,
 		InteractiveShell:      true,
+
+		// The Docker marketplace image enables ufw with `22/tcp LIMIT`, which
+		// rejects an IP that opens 6 or more connections within 30 seconds.
+		// Polling readiness any faster than this locks the client out and the
+		// resulting connection refusals look exactly like a sandbox that never
+		// booted.
+		ReadinessPollInterval: 15 * time.Second,
+		ReadinessTimeout:      8 * time.Minute,
 	}
 }
 
@@ -331,7 +346,7 @@ func (d *Driver) Shell(ctx context.Context, handle provider.Handle) error {
 		return err
 	}
 
-	arguments := append(strings.Fields(sshOptions), "-t", "root@"+address,
+	arguments := append(sshArguments(address), "-t",
 		"docker exec -it "+containerName+" /bin/bash --login")
 	command := exec.CommandContext(ctx, "ssh", arguments...)
 	command.Stdin = os.Stdin
@@ -421,9 +436,42 @@ func (d *Driver) address(ctx context.Context, handle provider.Handle) (string, e
 	return address, nil
 }
 
+// controlPath returns the multiplexing socket path. %C is a hash of the
+// connection tuple, which keeps the socket well inside the ~104 byte limit a
+// unix domain socket path is subject to.
+func controlPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/tmp/sbx-cm-%C"
+	}
+	directory := filepath.Join(home, ".sbx", "ssh")
+	_ = os.MkdirAll(directory, 0o700)
+	return filepath.Join(directory, "cm-%C")
+}
+
+func sshArguments(address string) []string {
+	arguments := strings.Fields(sshOptions)
+	arguments = append(arguments, "-o", "ControlPath="+controlPath())
+	return append(arguments, "root@"+address)
+}
+
+// remoteCommand renders a command as a single shell-quoted string.
+//
+// ssh concatenates its trailing arguments and hands the result to a remote
+// shell, so passing them individually loses all quoting: a command like
+// `bash -c "a; b"` arrives as `bash -c a; b`, which runs `b` on the droplet
+// host instead of inside the sandbox. Quoting each word keeps the boundary
+// intact.
+func remoteCommand(command []string) string {
+	quoted := make([]string, 0, len(command))
+	for _, word := range command {
+		quoted = append(quoted, shellQuote(word))
+	}
+	return strings.Join(quoted, " ")
+}
+
 func (d *Driver) secureShell(ctx context.Context, address string, command []string, output io.Writer) error {
-	arguments := append(strings.Fields(sshOptions), "root@"+address)
-	arguments = append(arguments, command...)
+	arguments := append(sshArguments(address), remoteCommand(command))
 
 	execution := exec.CommandContext(ctx, "ssh", arguments...)
 	execution.Stdout = output

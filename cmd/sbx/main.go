@@ -188,7 +188,18 @@ func commandUp(ctx context.Context, arguments []string) error {
 // need a machine-checkable readiness signal, not just a successful create
 // call, or they race the boot.
 func waitForReady(ctx context.Context, driver provider.Provider, handle provider.Handle) error {
-	deadline := time.Now().Add(2 * time.Minute)
+	capabilities := driver.Capabilities()
+
+	interval := capabilities.ReadinessPollInterval
+	if interval <= 0 {
+		interval = time.Second
+	}
+	timeout := capabilities.ReadinessTimeout
+	if timeout <= 0 {
+		timeout = 5 * time.Minute
+	}
+
+	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		state, err := driver.Status(ctx, handle)
 		if err != nil && !errors.Is(err, provider.ErrNotFound) {
@@ -204,10 +215,10 @@ func waitForReady(ctx context.Context, driver provider.Provider, handle provider
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(250 * time.Millisecond):
+		case <-time.After(interval):
 		}
 	}
-	return fmt.Errorf("sandbox %s did not become ready within 2m", handle.Identifier)
+	return fmt.Errorf("sandbox %s did not become ready within %s", handle.Identifier, timeout)
 }
 
 func commandList(ctx context.Context, arguments []string) error {

@@ -44,6 +44,8 @@ func (d *Driver) Capabilities() provider.Capabilities {
 		SubMinuteBoot:         true,
 		PerSandboxCredentials: true,
 		InteractiveShell:      true,
+		ReadinessPollInterval: 250 * time.Millisecond,
+		ReadinessTimeout:      2 * time.Minute,
 	}
 }
 

@@ -13,11 +13,8 @@ thing runs on your own metal if you want it to.
 > payment method is on file, so no sandbox has actually booted there yet. The `ssh`
 > driver is not written; the CLI says so rather than failing halfway through.
 >
-> The `digitalocean` driver provisions a droplet successfully, but exec has not
-> been verified end to end: the development machine sits behind a full-tunnel
-> VPN that permits TCP to known destinations and drops it to arbitrary droplet
-> IPs, so SSH never connects. Not a driver defect, but it means no DigitalOcean
-> boot-to-ready number exists yet.
+> The `digitalocean` driver is verified end to end on real infrastructure:
+> provision, exec, env, exit codes and teardown.
 
 ## Why
 
@@ -118,9 +115,17 @@ Blueprint: `node = "22"` + `jq = "1.7.1"`. Published image is **154 MB**.
 | Rebuild, base layers cached | 1m47s |
 | **Cold build on GitHub Actions, linux/amd64, pushed to GHCR** | **46s** |
 | **Warm provision, local driver (image present)** | **485ms** |
+| **Cold boot on DigitalOcean — droplet create to usable sandbox** | **2m 45s** |
 
 Building in CI rather than locally is not a small optimisation — it is 4.6x faster than the
 same cold build on an M-series laptop, and it is free.
+
+The DigitalOcean figure is the honest end-to-end cost of a sandbox on real
+infrastructure: droplet provision (~45s), boot, then cloud-init pulling the
+154 MB image and starting the container. Measured from a clean slate in `blr1`
+on `s-1vcpu-1gb`, which costs $0.00893/hr — the sandbox above cost well under
+a cent. Once running, exec is instant: connections are multiplexed, so a burst
+of twelve commands reuses one TCP session.
 
 The 485ms warm number is a floor, not a forecast. The local driver skips both the registry
 pull and VM scheduling, which are exactly what will dominate on a real provider. Render
@@ -131,7 +136,7 @@ numbers are still missing: service creation returns HTTP 402 until a card is on 
 | Provider | Billing | Boot | Snapshot | Per-sandbox keys |
 | --- | --- | --- | --- | --- |
 | `local` | free | ~400ms | no | n/a |
-| `digitalocean` | hourly, from $0.006/hr | sub-minute | yes | yes |
+| `digitalocean` | hourly, from $0.0089/hr | ~2m45s to usable | yes | yes |
 | `render` | see plan | deploy-shaped, minutes | no | **no — account-level** |
 
 DigitalOcean is the better fit by some distance: hourly billing makes a per-task

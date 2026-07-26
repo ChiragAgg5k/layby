@@ -333,7 +333,8 @@ func commandDown(ctx context.Context, arguments []string) error {
 	flags := flag.NewFlagSet("down", flag.ExitOnError)
 	all := flags.Bool("all", false, "destroy every sandbox")
 	expired := flags.Bool("expired", false, "destroy only sandboxes past their TTL")
-	if err := flags.Parse(arguments); err != nil {
+	positional, err := parseInterspersed(flags, arguments)
+	if err != nil {
 		return err
 	}
 
@@ -358,10 +359,10 @@ func commandDown(ctx context.Context, arguments []string) error {
 			}
 		}
 	default:
-		if flags.NArg() != 1 {
+		if len(positional) != 1 {
 			return errors.New("usage: sbx down <id> | -all | -expired")
 		}
-		record, err := findAnywhere(ctx, store, flags.Arg(0))
+		record, err := findAnywhere(ctx, store, positional[0])
 		if err != nil {
 			return err
 		}

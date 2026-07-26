@@ -60,13 +60,14 @@ func imageTag(arguments []string) error {
 func imageContext(arguments []string) error {
 	flags := flag.NewFlagSet("image context", flag.ExitOnError)
 	path := flags.String("f", "", "blueprint path")
-	if err := flags.Parse(arguments); err != nil {
+	positional, err := parseInterspersed(flags, arguments)
+	if err != nil {
 		return err
 	}
-	if flags.NArg() != 1 {
+	if len(positional) != 1 {
 		return errors.New("usage: sbx image context <dir> [-f mise.toml]")
 	}
-	directory := flags.Arg(0)
+	directory := positional[0]
 
 	print, err := blueprint.Load(*path)
 	if err != nil {

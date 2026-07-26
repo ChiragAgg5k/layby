@@ -1,5 +1,7 @@
 # sbx
 
+**[sbx.appwrite.network](https://sbx.appwrite.network)**
+
 Declarative, disposable sandbox environments defined by a `mise.toml`, provisioned on
 infrastructure you choose, and destroyed on a timer.
 

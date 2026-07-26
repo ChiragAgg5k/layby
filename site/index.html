@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sbx — disposable sandboxes from a mise.toml</title>
+<meta name="description" content="Declarative, disposable sandbox environments defined by a mise.toml, provisioned on infrastructure you choose, and destroyed on a timer.">
+<meta property="og:title" content="sbx — disposable sandboxes from a mise.toml">
+<meta property="og:description" content="Cloud agents, but you pick the machine and own the image.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0b0c'/><text y='74' x='50' font-size='68' font-family='monospace' fill='%23ffb000' text-anchor='middle'>%3E</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --ink:#0b0b0c;
+    --paper:#e9e6df;
+    --dim:#8b877e;
+    --line:#26262a;
+    --amber:#ffb000;
+    --amber-dim:#8a5f00;
+    --green:#7dd956;
+    --red:#ff5c5c;
+    --grid:56px;
+    --measure:74rem;
+  }
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-weight:300;
+    font-size:15px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  /* Faint engineering grid + amber bloom: atmosphere without an image request. */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(to right,rgba(255,255,255,.028) 1px,transparent 1px),
+      linear-gradient(to bottom,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:var(--grid) var(--grid);
+    mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 20%,transparent 78%);
+  }
+  body::after{
+    content:"";position:fixed;top:-30vh;left:50%;translate:-50% 0;
+    width:120vw;height:80vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,176,0,.10),transparent 62%);
+  }
+  .wrap{position:relative;z-index:1;max-width:var(--measure);margin:0 auto;padding:0 clamp(1.25rem,4vw,3.5rem)}
+  a{color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(255,176,0,.32);transition:border-color .18s,color .18s}
+  a:hover{border-bottom-color:var(--amber)}
+  .mark{color:var(--amber)}
+  .dim{color:var(--dim)}
+
+  /* ---- masthead ---- */
+  header{border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:1.1rem 0;flex-wrap:wrap}
+  .logo{font-weight:600;font-size:1.05rem;letter-spacing:-.02em}
+  .logo .caret{color:var(--amber);animation:blink 1.25s steps(2,start) infinite}
+  @keyframes blink{to{opacity:0}}
+  nav{display:flex;gap:1.4rem;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+  nav a{color:var(--dim);border:0}
+  nav a:hover{color:var(--paper)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(3.5rem,9vw,7rem) 0 clamp(2.5rem,6vw,4.5rem);position:relative}
+  .status{
+    display:inline-flex;align-items:center;gap:.55rem;font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);border:1px solid var(--line);
+    padding:.35rem .7rem;border-radius:2px;margin-bottom:2rem;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  h1{
+    font-size:clamp(2.6rem,8.5vw,6.4rem);
+    line-height:.94;font-weight:500;letter-spacing:-.045em;margin:0 0 1.6rem;
+    text-wrap:balance;
+  }
+  h1 em{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em;color:var(--amber)}
+  .lede{font-size:clamp(1rem,2.1vw,1.28rem);max-width:56ch;color:#c3bfb6;font-weight:300;margin:0 0 2.4rem}
+  .cta{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+  .btn{
+    display:inline-block;padding:.72rem 1.4rem;border:1px solid var(--amber);
+    color:var(--ink);background:var(--amber);font-weight:500;font-size:.9rem;border-radius:2px;
+    transition:translate .15s,box-shadow .15s;
+  }
+  .btn:hover{translate:0 -2px;box-shadow:0 6px 22px rgba(255,176,0,.24)}
+  .btn.ghost{background:transparent;color:var(--paper);border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--paper);box-shadow:none}
+
+  /* ---- terminal ---- */
+  .term{
+    border:1px solid var(--line);border-radius:4px;background:rgba(6,6,7,.72);
+    backdrop-filter:blur(6px);overflow:hidden;margin:0;
+  }
+  .term-bar{
+    display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;
+    border-bottom:1px solid var(--line);background:rgba(255,255,255,.018);
+  }
+  .term-bar span{width:9px;height:9px;border-radius:50%;background:#2e2e33}
+  .term-title{margin-left:.5rem;font-size:.72rem;color:var(--dim);letter-spacing:.08em}
+  pre{
+    margin:0;padding:1.15rem 1.15rem 1.35rem;overflow-x:auto;font-size:.83rem;line-height:1.75;
+    font-family:inherit;
+  }
+  pre code{font-family:inherit}
+  .p{color:var(--amber)}          /* prompt        */
+  .c{color:var(--paper)}          /* command       */
+  .o{color:var(--dim)}            /* output        */
+  .ok{color:var(--green)}
+  .no{color:var(--red)}
+
+  /* ---- sections ---- */
+  section{padding:clamp(3rem,7vw,5.5rem) 0;border-top:1px solid var(--line)}
+  .eyebrow{
+    font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-dim);
+    margin:0 0 1rem;font-weight:500;
+  }
+  h2{font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.1;letter-spacing:-.03em;font-weight:500;margin:0 0 1.1rem;text-wrap:balance}
+  h3{font-size:1rem;font-weight:600;letter-spacing:-.01em;margin:0 0 .5rem}
+  p{margin:0 0 1rem;max-width:68ch}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(1.5rem,4vw,3.5rem);align-items:start}
+  @media (max-width:860px){.split{grid-template-columns:1fr}}
+
+  /* ---- notes grid ---- */
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .note{background:var(--ink);padding:1.4rem 1.3rem}
+  .note .n{font-size:.7rem;color:var(--amber-dim);letter-spacing:.14em;display:block;margin-bottom:.7rem}
+  .note p{font-size:.85rem;color:#a8a49b;margin:0}
+
+  /* ---- table ---- */
+  .tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:.5rem}
+  .tbl th{
+    text-align:left;font-weight:500;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--dim);padding:.6rem .8rem;border-bottom:1px solid var(--line);
+  }
+  .tbl td{padding:.7rem .8rem;border-bottom:1px solid rgba(38,38,42,.6);color:#bbb7ae}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tbl tr.hi td{color:var(--paper);background:rgba(255,176,0,.05)}
+  .tbl tr.hi td:last-child{color:var(--amber);font-weight:500}
+  .caption{font-size:.78rem;color:var(--dim);margin-top:1rem;max-width:62ch}
+
+  /* ---- roadmap ---- */
+  ul.road{list-style:none;padding:0;margin:0;font-size:.88rem}
+  ul.road li{padding:.5rem 0 .5rem 1.9rem;position:relative;color:#a8a49b;border-bottom:1px solid rgba(38,38,42,.5)}
+  ul.road li:last-child{border-bottom:0}
+  ul.road li::before{position:absolute;left:0;top:.5rem;font-size:.8rem}
+  ul.road li.done{color:var(--paper)}
+  ul.road li.done::before{content:"[x]";color:var(--green)}
+  ul.road li.todo::before{content:"[ ]";color:var(--dim)}
+  ul.road li.block::before{content:"[!]";color:var(--red)}
+  ul.road li.block{color:#c9b9a0}
+
+  footer{border-top:1px solid var(--line);padding:2.2rem 0 3rem;font-size:.78rem;color:var(--dim)}
+  .foot{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center}
+
+  /* one orchestrated load, staggered */
+  .rise{opacity:0;translate:0 14px;animation:rise .7s cubic-bezier(.2,.7,.3,1) forwards}
+  .rise:nth-child(1){animation-delay:.05s}
+  .rise:nth-child(2){animation-delay:.13s}
+  .rise:nth-child(3){animation-delay:.21s}
+  .rise:nth-child(4){animation-delay:.29s}
+  .rise:nth-child(5){animation-delay:.37s}
+  @keyframes rise{to{opacity:1;translate:0 0}}
+  @media (prefers-reduced-motion:reduce){
+    .rise{animation:none;opacity:1;translate:none}
+    .logo .caret{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="logo">sbx<span class="caret">_</span></div>
+    <nav>
+      <a href="#how">How</a>
+      <a href="#measured">Measured</a>
+      <a href="#design">Design</a>
+      <a href="https://github.com/ChiragAgg5k/sbx">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="status rise"><span class="dot"></span> local driver working · render driver unverified</div>
+    <h1 class="rise">Disposable sandboxes<br>from a <em>mise.toml</em></h1>
+    <p class="lede rise">Cloud agent products hand you someone else's environment on someone else's machine. This inverts it: the environment is a file in your repo, and the machine is whichever provider you point at.</p>
+    <div class="cta rise">
+      <a class="btn" href="https://github.com/ChiragAgg5k/sbx">View source</a>
+      <a class="btn ghost" href="#how">How it works</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <figure class="term rise">
+    <div class="term-bar"><span></span><span></span><span></span><div class="term-title">~/project — sbx</div></div>
+    <pre><code><span class="p">$</span> <span class="c">sbx up</span>
+<span class="o">image  sbx-base:5910fe84f5531946 (cached)</span>
+<span class="o">ready  e45358fc in <span class="ok">485ms</span> (build 83ms, boot 401ms)</span>
+<span class="o">expires 2:56PM</span>
+<span class="ok">e45358fc</span>
+
+<span class="p">$</span> <span class="c">sbx run e45358fc -- node --version</span>
+<span class="o">v22.23.1</span>
+
+<span class="p">$</span> <span class="c">sbx run e45358fc -- 'exit 42'; echo $?</span>
+<span class="o">42</span>
+
+<span class="p">$</span> <span class="c">sbx doctor</span>
+<span class="o">provider local: 1 running</span>
+<span class="o">  <span class="no">ORPHAN</span>  deadbeef is running but absent from local state</span>
+<span class="o">  <span class="no">EXPIRED</span> 8ba1d667 outlived its TTL — `sbx down -expired`</span>
+
+<span class="p">$</span> <span class="c">sbx down -all</span>
+<span class="o">destroyed e45358fc</span></code></pre>
+  </figure>
+</div>
+
+<div class="wrap">
+  <section id="how">
+    <div class="split">
+      <div>
+        <p class="eyebrow">The blueprint</p>
+        <h2>It's just a mise.toml</h2>
+        <p><code class="mark">[tools]</code> and <code class="mark">[env]</code> are ordinary <a href="https://mise.jdx.dev/">mise</a> and work with a plain <code>mise install</code> on your laptop. The <code class="mark">[sandbox]</code> table is a namespaced extension that mise ignores.</p>
+        <p class="dim" style="font-size:.85rem">One file configures your machine and the remote one. No Dockerfile per stack — the toolchain <em>is</em> the declaration.</p>
+      </div>
+      <figure class="term">
+        <div class="term-bar"><span></span><span></span><span></span><div class="term-title">mise.toml</div></div>
+        <pre><code><span class="mark">[tools]</span>
+node = <span class="ok">"22"</span>
+jq   = <span class="ok">"1.7.1"</span>
+
+<span class="mark">[env]</span>
+NODE_ENV = <span class="ok">"development"</span>
+
+<span class="mark">[sandbox]</span>
+provider     = <span class="ok">"local"</span>   <span class="o"># local | render | ssh</span>
+ttl          = <span class="ok">"1h"</span>      <span class="o"># destroys itself</span>
+idle_timeout = <span class="ok">"20m"</span>
+
+<span class="mark">[sandbox.hooks]</span>
+setup  = [<span class="ok">"npm ci"</span>]
+verify = [<span class="ok">"npm test"</span>]</code></pre>
+      </figure>
+    </div>
+  </section>
+
+  <section id="measured">
+    <p class="eyebrow">Measured, not estimated</p>
+    <h2>The image is the cache</h2>
+    <p>Running <code>mise install</code> at boot costs minutes on every start — and real money on a metered provider. The toolchain is baked into an image at build time instead, so booting is a pull. The expensive install runs once per unique build definition, on whichever builder is cheapest.</p>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td>Cold build — local Docker, Apple Silicon, empty layer cache</td><td>3m 31s</td></tr>
+        <tr><td>Rebuild — base layers cached</td><td>1m 47s</td></tr>
+        <tr class="hi"><td>Cold build — GitHub Actions, linux/amd64, pushed to GHCR</td><td>46s</td></tr>
+        <tr class="hi"><td>Warm provision — local driver, image present</td><td>485ms</td></tr>
+        <tr><td>Published image size</td><td>154 MB</td></tr>
+      </tbody>
+    </table>
+    <p class="caption">Building in CI rather than locally is <span class="mark">4.6× faster</span> than the same cold build on an M-series laptop — and free. The 485ms figure is a floor, not a forecast: the local driver skips the registry pull and VM scheduling that will dominate on a real provider.</p>
+  </section>
+
+  <section id="design">
+    <p class="eyebrow">Load-bearing decisions</p>
+    <h2>Four things that were bugs first</h2>
+    <div class="notes">
+      <div class="note">
+        <span class="n">01 — CACHE KEY</span>
+        <h3>Hash the whole build definition</h3>
+        <p>Keying the image tag on the toolchain alone meant a corrected Dockerfile silently reused the stale image. The fix appeared to do nothing — twice — before the cause was obvious.</p>
+      </div>
+      <div class="note">
+        <span class="n">02 — PATH</span>
+        <h3>Exported twice, on purpose</h3>
+        <p>A login shell sources <code>/etc/profile</code>, which resets <code>PATH</code> and discards the image's <code>ENV</code>. Without both, <code>run</code> and <code>shell</code> disagree about whether <code>node</code> exists.</p>
+      </div>
+      <div class="note">
+        <span class="n">03 — MISE SCOPE</span>
+        <h3>Global, not directory-scoped</h3>
+        <p>Shims resolve a version by walking up from the current directory, so a project-scoped config leaves tools invisible everywhere else — including the repo an agent works in.</p>
+      </div>
+      <div class="note">
+        <span class="n">04 — TRUTH</span>
+        <h3>The provider, not local state</h3>
+        <p><code>~/.sbx/state.json</code> is a cache. A running sandbox with no local record is an orphan. A lost laptop should cost a reconciliation pass, not a leaked instance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div>
+        <p class="eyebrow">Status</p>
+        <h2>Where it stands</h2>
+        <p>The Docker driver is complete and exercised end to end. The Render driver is written but has never booted a sandbox — Render returns <code class="no">HTTP 402</code> until a payment method is on file, and background workers have no free tier.</p>
+        <p class="dim" style="font-size:.85rem">Exit codes pass through, so an agent can run <code>sbx run $ID -- pytest</code> and branch on <code>$?</code>. Progress goes to stderr; stdout stays clean.</p>
+      </div>
+      <div>
+        <ul class="road">
+          <li class="done">Blueprint parsing, tool hashing, image pipeline</li>
+          <li class="done">Local Docker driver, full lifecycle</li>
+          <li class="done">TTL tracking, orphan reconciliation</li>
+          <li class="done">Render driver — worker from a prebuilt GHCR image</li>
+          <li class="block">Verify Render end to end — blocked on billing</li>
+          <li class="todo">In-sandbox self-destruct daemon</li>
+          <li class="todo">Spend ceiling — refuse <code>up</code> past a budget</li>
+          <li class="todo">SSH driver — point at a box you own</li>
+          <li class="todo">MCP server exposing sandboxes as agent tools</li>
+          <li class="todo">Git egress — agent pushes a branch, opens a PR</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap foot">
+    <div>Built with <a href="https://mise.jdx.dev/">mise</a> · Hosted on <a href="https://appwrite.io/products/sites">Appwrite Sites</a></div>
+    <div><a href="https://github.com/ChiragAgg5k/sbx">github.com/ChiragAgg5k/sbx</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -8,13 +8,13 @@ infrastructure you choose, and destroyed on a timer.
 Think Cursor's cloud agents, but you pick the machine, you own the image, and the whole
 thing runs on your own metal if you want it to.
 
-> **Status:** early. The `local` (Docker) driver is complete and exercised end to end.
-> The `render` driver is implemented but unverified — Render returns HTTP 402 until a
-> payment method is on file, so no sandbox has actually booted there yet. The `ssh`
-> driver is not written; the CLI says so rather than failing halfway through.
+> **Status:** early. Two drivers ship, and both are exercised end to end — provision,
+> exec, env, exit codes and teardown. `local` runs on Docker; `digitalocean` is verified
+> on real infrastructure.
 >
-> The `digitalocean` driver is verified end to end on real infrastructure:
-> provision, exec, env, exit codes and teardown.
+> Nothing else is written yet. Candidate providers are listed under
+> [Provider shortlist](#provider-shortlist); the CLI says a driver is missing rather than
+> failing halfway through a provision.
 
 ## Why
 
@@ -48,7 +48,7 @@ jq = "1.7.1"
 NODE_ENV = "development"
 
 [sandbox]
-provider = "local"     # local | digitalocean | render | ssh
+provider = "local"     # local | digitalocean
 ttl = "1h"             # sandboxes destroy themselves
 idle_timeout = "20m"
 
@@ -115,21 +115,20 @@ Blueprint: `node = "22"` + `jq = "1.7.1"`. Published image is **154 MB**.
 | Rebuild, base layers cached | 1m47s |
 | **Cold build on GitHub Actions, linux/amd64, pushed to GHCR** | **46s** |
 | **Warm provision, local driver (image present)** | **485ms** |
-| **Cold boot on DigitalOcean — droplet create to usable sandbox** | **2m 45s** |
+| **Cold boot on DigitalOcean — instance create to usable sandbox** | **2m 45s** |
 
 Building in CI rather than locally is not a small optimisation — it is 4.6x faster than the
 same cold build on an M-series laptop, and it is free.
 
 The DigitalOcean figure is the honest end-to-end cost of a sandbox on real
-infrastructure: droplet provision (~45s), boot, then cloud-init pulling the
+infrastructure: instance provision (~45s), boot, then cloud-init pulling the
 154 MB image and starting the container. Measured from a clean slate in `blr1`
 on `s-1vcpu-1gb`, which costs $0.00893/hr — the sandbox above cost well under
 a cent. Once running, exec is instant: connections are multiplexed, so a burst
 of twelve commands reuses one TCP session.
 
 The 485ms warm number is a floor, not a forecast. The local driver skips both the registry
-pull and VM scheduling, which are exactly what will dominate on a real provider. Render
-numbers are still missing: service creation returns HTTP 402 until a card is on file.
+pull and VM scheduling, which are exactly what will dominate on a real provider.
 
 ## Providers
 
@@ -137,28 +136,45 @@ numbers are still missing: service creation returns HTTP 402 until a card is on 
 | --- | --- | --- | --- | --- |
 | `local` | free | ~400ms | no | n/a |
 | `digitalocean` | hourly, from $0.0089/hr | ~2m45s to usable | yes | yes |
-| `render` | see plan | deploy-shaped, minutes | no | **no — account-level** |
 
-DigitalOcean is the better fit by some distance: hourly billing makes a per-task
-sandbox cost a fraction of a cent, tags are first-class so reconciliation never
-depends on a naming convention, and keys attach per droplet. Render has no
-create-a-machine primitive at all — a sandbox there is a background worker, and
-every sandbox is reachable by every SSH key on the account.
+DigitalOcean is the default for anything that has to outlive your laptop: hourly
+billing makes a per-task sandbox cost a fraction of a cent, tags are first-class so
+reconciliation never depends on a naming convention, and keys attach per instance.
+`local` stays the fast path for anything that fits on the machine in front of you.
 
 **One deliberate gap on DigitalOcean:** there is no true in-sandbox
 self-destruct. Doing it properly means writing an API token onto a box that runs
 untrusted agent code, and a full-scope token is worse than an occasional orphan.
-cloud-init powers the droplet off at expiry, but a powered-off droplet still
+cloud-init powers the instance off at expiry, but a stopped instance still
 bills for its disk — `layby down -expired` is what actually stops the meter.
+
+## Provider shortlist
+
+None of these are written yet. A provider makes the list when it has a real
+create-a-machine primitive, billing granular enough that a ten-minute sandbox costs
+ten minutes, and keys that attach per instance rather than per account. Ordered by how
+well they clear that bar.
+
+| Provider | Create primitive | Billing granularity | The catch |
+| --- | --- | --- | --- |
+| Fly.io | Machines API | per-second while running | a stopped machine still bills its rootfs — the same trap as a stopped instance |
+| AWS EC2 | `RunInstances` | per-second, 60s minimum | tags and per-instance keys work like DigitalOcean's; the API surface is the cost |
+| Google Compute Engine | `instances.insert` | per-second, 60s minimum | same shape as EC2, same weight |
+| Linode (Akamai) | `POST /linode/instances` | hourly, billed only while the instance exists | no partial-hour minimum, but no per-second either |
+| Vultr | `POST /instances` | hourly | hourly like DigitalOcean, without the snapshot story |
+| Hetzner Cloud | `POST /servers` | hourly, partial hours rounded up | cheapest per hour on the list, but a three-minute sandbox costs a full one |
+
+Billing models are from each provider's public documentation as of July 2026, not from
+a run — no sandbox has booted on any of them. The measured table above exists precisely
+because published numbers and observed ones disagree.
 
 ## Roadmap
 
 - [x] Blueprint parsing, tool hashing, image build pipeline
 - [x] `local` Docker driver, full lifecycle
 - [x] TTL tracking, orphan reconciliation via `layby doctor`
-- [x] `digitalocean` driver — droplet from a prebuilt GHCR image, hourly billing
-- [x] `render` driver — background worker from a prebuilt GHCR image
-- [ ] Verify the `render` driver end to end (blocked on Render billing, HTTP 402)
+- [x] `digitalocean` driver — instance from a prebuilt GHCR image, hourly billing
+- [ ] Snapshot after pull, to cut cold boot to roughly instance-create time
 - [ ] In-sandbox self-destruct daemon so a closed laptop cannot leak a paid instance
 - [ ] Spend ceiling — refuse `up` past a configured budget
 - [ ] `ssh` driver — point at a box you already own

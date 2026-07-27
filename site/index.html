@@ -363,39 +363,33 @@
         <div class="stat"><dt>Published image</dt><dd>154<small>MB</small></dd></div>
         <div class="stat"><dt>Instance cost</dt><dd>$0.0089<small>/hr</small></dd></div>
       </dl>
-      <p class="panel-note">Every figure on this page came off a real run. The sandbox behind the transcript below cost well under a cent.</p>
+      <p class="panel-note">Every figure on this page came off a real run. The transcript below is a verbatim local session; the DigitalOcean numbers are from a clean-slate boot that cost well under a cent.</p>
     </div>
   </div>
 </div>
 
 <div class="wrap">
   <figure class="term reveal">
-    <figcaption class="term-head"><span class="path">~/project</span><span>provider = digitalocean</span></figcaption>
+    <figcaption class="term-head"><span class="path">~/project</span><span>provider = local</span></figcaption>
     <pre><code><span class="p">$</span> <span class="c">layby up</span>
-<span class="o">image  ghcr.io/chiragagg5k/layby-base:5910fe84f5531946 (cached)</span>
-<span class="o">ready  b41a0ccd in </span><span class="ok">2m44.945s</span>
-<span class="o">expires 3:53PM</span>
-<span class="ok">b41a0ccd</span>
+<span class="o">image  layby-base:aa6257561551d2ef (cached)</span>
+<span class="o">ready  4b32b313 in </span><span class="ok">526ms</span><span class="o"> (build 210ms, boot 316ms)</span>
+<span class="o">expires 11:01AM</span>
+<span class="ok">4b32b313</span>
 
-<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'node --version; jq --version'</span>
+<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'node --version; jq --version'</span>
 <span class="o">v22.23.1</span>
 <span class="o">jq-1.7.1</span>
 
-<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'hostname; head -1 /etc/os-release'</span>
-<span class="o">ccb57242a3e7</span>
+<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'hostname; head -1 /etc/os-release'</span>
+<span class="o">514ecfd440ca</span>
 <span class="o">PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"</span>   <span class="cm"># our image, not the host</span>
 
-<span class="p">$</span> <span class="c">layby run b41a0ccd -- 'exit 42'; echo $?</span>
+<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'exit 42'; echo $?</span>
 <span class="o">42</span>
 
-<span class="p">$</span> <span class="c">layby doctor</span>
-<span class="o">provider digitalocean: 1 running</span>
-<span class="o">provider local: 0 running</span>
-<span class="ok">all clear</span>
-
 <span class="p">$</span> <span class="c">layby down -all</span>
-<span class="o">destroyed b41a0ccd</span>
-<span class="o">402 account droplets untouched</span></code></pre>
+<span class="o">destroyed 4b32b313</span></code></pre>
   </figure>
 </div>
 

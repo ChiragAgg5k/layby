@@ -1,3 +1,26 @@
 {
-    "projectId": "chirag-project-prod"
+    "organizationId": "67610b8ee51f147ca943",
+    "projectId": "chirag-project-prod",
+    "projectName": "Main Project",
+    "endpoint": "https://sgp.cloud.appwrite.io/v1",
+    "sites": [
+        {
+            "$id": "layby",
+            "name": "layby",
+            "path": "site",
+            "framework": "other",
+            "logging": true,
+            "timeout": 30,
+            "buildRuntime": "node-22",
+            "adapter": "static",
+            "installCommand": "",
+            "buildCommand": "",
+            "outputDirectory": "./",
+            "fallbackFile": "index.html",
+            "startCommand": "",
+            "buildSpecification": "s-2vcpu-2gb",
+            "runtimeSpecification": "s-0.5vcpu-512mb",
+            "deploymentRetention": 0
+        }
+    ]
 }

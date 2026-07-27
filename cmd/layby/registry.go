@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/chiragaggarwal/layby/internal/blueprint"
 	"github.com/chiragaggarwal/layby/internal/provider"
@@ -26,7 +27,8 @@ func driverFor(name string) (provider.Provider, error) {
 	if driver, found := drivers()[name]; found {
 		return driver, nil
 	}
-	return nil, fmt.Errorf("provider %q is not implemented; available: local, digitalocean", name)
+	return nil, fmt.Errorf("provider %q is not implemented; available: %s",
+		name, strings.Join(sortedDriverNames(), ", "))
 }
 
 // sortedDriverNames gives reconciliation a deterministic order so `layby doctor`

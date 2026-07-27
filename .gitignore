@@ -4,3 +4,4 @@ bin/
 
 # vendored agent skills, restored from skills-lock.json
 .agents/
+.claude/

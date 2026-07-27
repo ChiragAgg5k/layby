@@ -1,75 +1,71 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 
 	"github.com/chiragaggarwal/layby/internal/blueprint"
 	"github.com/chiragaggarwal/layby/internal/image"
 )
 
-const imageUsage = `layby image — inspect and materialise a blueprint's build definition
-
-Usage:
-  layby image tag     [-f mise.toml] [-registry ghcr.io/you]   print the image reference
-  layby image context <dir> [-f mise.toml]                     write the build context
-
-The context subcommand exists so CI can build exactly the definition the CLI
-would build locally, without reimplementing the template.
-`
-
-func commandImage(ctx context.Context, arguments []string) error {
-	if len(arguments) == 0 {
-		return errors.New(imageUsage)
+func newImageCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "image",
+		Short: "Inspect or materialise the build definition",
 	}
-
-	switch arguments[0] {
-	case "tag":
-		return imageTag(arguments[1:])
-	case "context":
-		return imageContext(arguments[1:])
-	default:
-		return fmt.Errorf("unknown image subcommand %q\n\n%s", arguments[0], imageUsage)
-	}
+	command.AddCommand(newImageTagCommand(), newImageContextCommand())
+	return command
 }
 
-func imageTag(arguments []string) error {
-	flags := flag.NewFlagSet("image tag", flag.ExitOnError)
-	path := flags.String("f", "", "blueprint path")
-	registry := flags.String("registry", "", "image registry prefix, e.g. ghcr.io/you")
-	if err := flags.Parse(arguments); err != nil {
-		return err
+func newImageTagCommand() *cobra.Command {
+	var path, registry string
+
+	command := &cobra.Command{
+		Use:   "tag",
+		Short: "Print the image reference for a blueprint",
+		Args:  cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			print, err := blueprint.Load(path)
+			if err != nil {
+				return err
+			}
+			reference, err := image.Reference(registry, print)
+			if err != nil {
+				return err
+			}
+			fmt.Println(reference)
+			return nil
+		},
 	}
 
-	print, err := blueprint.Load(*path)
-	if err != nil {
-		return err
-	}
-	reference, err := image.Reference(*registry, print)
-	if err != nil {
-		return err
-	}
-	fmt.Println(reference)
-	return nil
+	blueprintFlag(command, &path)
+	registryFlag(command, &registry)
+	return command
 }
 
-func imageContext(arguments []string) error {
-	flags := flag.NewFlagSet("image context", flag.ExitOnError)
-	path := flags.String("f", "", "blueprint path")
-	positional, err := parseInterspersed(flags, arguments)
-	if err != nil {
-		return err
-	}
-	if len(positional) != 1 {
-		return errors.New("usage: layby image context <dir> [-f mise.toml]")
-	}
-	directory := positional[0]
+func newImageContextCommand() *cobra.Command {
+	var path string
 
-	print, err := blueprint.Load(*path)
+	command := &cobra.Command{
+		Use:   "context <dir>",
+		Short: "Write the build context so CI builds exactly what the CLI would",
+		Long: "Write the build context so CI builds exactly what the CLI would.\n\n" +
+			"This exists so the pipeline never reimplements the Dockerfile template.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, arguments []string) error {
+			return writeImageContext(path, arguments[0])
+		},
+	}
+
+	blueprintFlag(command, &path)
+	return command
+}
+
+func writeImageContext(path, directory string) error {
+	print, err := blueprint.Load(path)
 	if err != nil {
 		return err
 	}

@@ -60,14 +60,19 @@ verify = ["npm test"]
 ## Usage
 
 ```
-layby up      [-f mise.toml] [-ttl 1h] [-rebuild]   provision and wait until ready
-layby ls                                            list sandboxes with age and TTL remaining
-layby run     <id> -- <command...>                  run a command, passthrough exit code
-layby shell   <id>                                  interactive shell
-layby down    <id> | -all | -expired                destroy sandboxes
-layby doctor  [-f mise.toml]                        reconcile provider state, report orphans
-layby explain [-f mise.toml]                        show resolved blueprint and Dockerfile
+layby up      [-f mise.toml] [--ttl 1h] [--rebuild]  provision and wait until ready
+layby ls                                             list sandboxes with age and TTL remaining
+layby run     <id> -- <command...>                   run a command, passthrough exit code
+layby shell   <id>                                   interactive shell
+layby down    <id> | --all | --expired               destroy sandboxes
+layby doctor  [-f mise.toml]                         reconcile provider state, report orphans
+layby explain [-f mise.toml]                         show resolved blueprint and Dockerfile
+layby image   tag | context <dir>                    inspect or materialise the build definition
 ```
+
+`layby help <command>` prints the full flag list. Long flags also accept the older
+single-dash spelling (`-all`, `-ttl 1h`), so scripts written against earlier versions
+keep working.
 
 `layby up` prints only the sandbox identifier to stdout, so it composes:
 
@@ -146,7 +151,7 @@ reconciliation never depends on a naming convention, and keys attach per instanc
 self-destruct. Doing it properly means writing an API token onto a box that runs
 untrusted agent code, and a full-scope token is worse than an occasional orphan.
 cloud-init powers the instance off at expiry, but a stopped instance still
-bills for its disk — `layby down -expired` is what actually stops the meter.
+bills for its disk — `layby down --expired` is what actually stops the meter.
 
 ## Provider shortlist
 

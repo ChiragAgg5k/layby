@@ -373,23 +373,34 @@
     <figcaption class="term-head"><span class="path">~/project</span><span>provider = local</span></figcaption>
     <pre><code><span class="p">$</span> <span class="c">layby up</span>
 <span class="o">image  layby-base:aa6257561551d2ef (cached)</span>
-<span class="o">ready  4b32b313 in </span><span class="ok">526ms</span><span class="o"> (build 210ms, boot 316ms)</span>
-<span class="o">expires 11:01AM</span>
-<span class="ok">4b32b313</span>
+<span class="o">ready  054a341c in </span><span class="ok">432ms</span><span class="o"> (build 97ms, boot 335ms)</span>
+<span class="o">expires 11:29AM</span>
+<span class="ok">054a341c</span>
 
-<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'node --version; jq --version'</span>
+<span class="p">$</span> <span class="c">layby run 054a341c -- 'node --version; jq --version'</span>
 <span class="o">v22.23.1</span>
 <span class="o">jq-1.7.1</span>
 
-<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'hostname; head -1 /etc/os-release'</span>
-<span class="o">514ecfd440ca</span>
+<span class="p">$</span> <span class="c">layby run 054a341c -- 'hostname; head -1 /etc/os-release'</span>
+<span class="o">b3b821d1ed1a</span>
 <span class="o">PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"</span>   <span class="cm"># our image, not the host</span>
 
-<span class="p">$</span> <span class="c">layby run 4b32b313 -- 'exit 42'; echo $?</span>
+<span class="p">$</span> <span class="c">layby run 054a341c -- 'exit 42'; echo $?</span>
 <span class="o">42</span>
 
+<span class="p">$</span> <span class="c">layby doctor -f mise.toml</span>
+<span class="o">blueprint mise.toml</span>
+
+<span class="o">provider digitalocean: 0 running</span>
+
+<span class="o">provider local: 1 running</span>
+
+<span class="o">1 sandbox(es) tracked locally</span>
+
+<span class="ok">all clear</span>
+
 <span class="p">$</span> <span class="c">layby down -all</span>
-<span class="o">destroyed 4b32b313</span></code></pre>
+<span class="o">destroyed 054a341c</span></code></pre>
   </figure>
 </div>
 
@@ -502,7 +513,7 @@ verify = [<span class="v">"npm test"</span>]</code></pre>
 
     <div class="split" style="margin-top:2.25rem">
       <p class="figure-note reveal" style="margin-top:0">DigitalOcean earns the default for remote work. Hourly billing makes a per-task sandbox cost a fraction of a cent, tags are first-class so reconciliation never leans on a naming convention, and keys attach per instance. Local Docker stays the fast path — 485 ms and no meter running.</p>
-      <p class="figure-note reveal" style="margin-top:0">One gap is deliberate: there is <strong>no true in-sandbox self-destruct</strong>. Doing it properly means writing an API token onto a box running untrusted agent code, and a full-scope token is worse than an occasional orphan. cloud-init powers the instance off at TTL, but a stopped instance still bills for its disk — <code>layby down -expired</code> is what stops the meter.</p>
+      <p class="figure-note reveal" style="margin-top:0">One gap is deliberate: there is <strong>no true in-sandbox self-destruct</strong>. Doing it properly means writing an API token onto a box running untrusted agent code, and a full-scope token is worse than an occasional orphan. cloud-init powers the instance off at TTL, but a stopped instance still bills for its disk — <code>layby down --expired</code> is what stops the meter.</p>
     </div>
 
     <div class="shortlist reveal">

@@ -3,210 +3,371 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>layby — disposable sandboxes from a mise.toml</title>
 <meta name="description" content="Declarative, disposable sandbox environments defined by a mise.toml, provisioned on infrastructure you choose, and destroyed on a timer.">
+<link rel="canonical" href="https://layby.appwrite.network/">
 <meta property="og:title" content="layby — disposable sandboxes from a mise.toml">
-<meta property="og:description" content="Cloud agents, but you pick the machine and own the image.">
+<meta property="og:description" content="Cloud agents, but you pick the machine and own the image. Verified end to end on DigitalOcean: 2m45s from a clean slate, well under a cent.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0b0c'/><text y='74' x='50' font-size='68' font-family='monospace' fill='%23ffb000' text-anchor='middle'>%3E</text></svg>">
+<meta property="og:url" content="https://layby.appwrite.network/">
+<meta name="theme-color" content="#faf8f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23a8401c'/><rect x='22' y='44' width='56' height='9' rx='4.5' fill='%23faf8f5'/><rect x='22' y='62' width='34' height='9' rx='4.5' fill='%23faf8f5' opacity='.55'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *,*::before,*::after{box-sizing:border-box}
+
   :root{
-    --ink:#0b0b0c;
-    --paper:#e9e6df;
-    --dim:#8b877e;
-    --line:#26262a;
-    --amber:#ffb000;
-    --amber-dim:#8a5f00;
-    --green:#7dd956;
-    --red:#ff5c5c;
-    --grid:56px;
-    --measure:74rem;
+    color-scheme:light dark;
+
+    --sans:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    --surface:#faf8f5;
+    --raised:#fffefc;
+    --sunken:#f2efe9;
+    --ink:#17140f;
+    --text:#3d3830;
+    --muted:#5f5a51;
+    --faint:#6f6a60;
+    --line:rgba(23,20,15,.10);
+    --line-strong:rgba(23,20,15,.20);
+    --accent:#a8401c;
+    --accent-quiet:rgba(168,64,28,.10);
+    --bar:#a8401c;
+    --bar-soft:#d8a894;
+    --ok:#166534;
+    --bad:#b3261e;
+
+    --shadow-sm:0 1px 1px rgba(23,20,15,.04), 0 2px 4px rgba(23,20,15,.04);
+    --shadow-md:0 1px 2px rgba(23,20,15,.05), 0 4px 8px rgba(23,20,15,.05), 0 8px 24px rgba(23,20,15,.04);
+
+    --ease:cubic-bezier(.25,1,.5,1);
+    --ease-soft:cubic-bezier(.16,1,.3,1);
+
+    --measure:66ch;
+    --page:76rem;
+    --gutter:clamp(1.25rem,5vw,4rem);
   }
-  html{-webkit-text-size-adjust:100%}
+
+  @media (prefers-color-scheme:dark){
+    :root{
+      --surface:#171614;
+      --raised:#1e1d1a;
+      --sunken:#121110;
+      --ink:#f4f1ea;
+      --text:rgba(244,241,234,.78);
+      --muted:rgba(244,241,234,.62);
+      --faint:rgba(244,241,234,.50);
+      --line:rgba(244,241,234,.10);
+      --line-strong:rgba(244,241,234,.20);
+      --accent:#f2884f;
+      --accent-quiet:rgba(242,136,79,.12);
+      --bar:#f2884f;
+      --bar-soft:#7a4b31;
+      --ok:#6ee7a0;
+      --bad:#ff8a80;
+
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(244,241,234,.05);
+      --shadow-md:0 4px 12px rgba(0,0,0,.45), 0 0 0 1px rgba(244,241,234,.06);
+    }
+  }
+
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
   body{
     margin:0;
-    background:var(--ink);
-    color:var(--paper);
-    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-weight:300;
-    font-size:15px;
-    line-height:1.65;
+    background:var(--surface);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:1.0625rem;
+    line-height:1.6;
     -webkit-font-smoothing:antialiased;
-    overflow-x:hidden;
+    text-rendering:optimizeLegibility;
   }
-  /* Faint engineering grid + amber bloom: atmosphere without an image request. */
-  body::before{
-    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-    background-image:
-      linear-gradient(to right,rgba(255,255,255,.028) 1px,transparent 1px),
-      linear-gradient(to bottom,rgba(255,255,255,.028) 1px,transparent 1px);
-    background-size:var(--grid) var(--grid);
-    mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 20%,transparent 78%);
-  }
-  body::after{
-    content:"";position:fixed;top:-30vh;left:50%;translate:-50% 0;
-    width:120vw;height:80vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(255,176,0,.10),transparent 62%);
-  }
-  .wrap{position:relative;z-index:1;max-width:var(--measure);margin:0 auto;padding:0 clamp(1.25rem,4vw,3.5rem)}
-  a{color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(255,176,0,.32);transition:border-color .18s,color .18s}
-  a:hover{border-bottom-color:var(--amber)}
-  .mark{color:var(--amber)}
-  .dim{color:var(--dim)}
 
-  /* ---- masthead ---- */
-  header{border-bottom:1px solid var(--line)}
-  .bar{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:1.1rem 0;flex-wrap:wrap}
-  .logo{font-weight:600;font-size:1.05rem;letter-spacing:-.02em}
-  .logo .caret{color:var(--amber);animation:blink 1.25s steps(2,start) infinite}
-  @keyframes blink{to{opacity:0}}
-  nav{display:flex;gap:1.4rem;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
-  nav a{color:var(--dim);border:0}
-  nav a:hover{color:var(--paper)}
+  .wrap{max-width:var(--page);margin:0 auto;padding-inline:var(--gutter)}
+  .prose{max-width:var(--measure)}
 
-  /* ---- hero ---- */
-  .hero{padding:clamp(3.5rem,9vw,7rem) 0 clamp(2.5rem,6vw,4.5rem);position:relative}
-  .status{
-    display:inline-flex;align-items:center;gap:.55rem;font-size:.72rem;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--dim);border:1px solid var(--line);
-    padding:.35rem .7rem;border-radius:2px;margin-bottom:2rem;
-  }
-  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
-  h1{
-    font-size:clamp(2.6rem,8.5vw,6.4rem);
-    line-height:.94;font-weight:500;letter-spacing:-.045em;margin:0 0 1.6rem;
-    text-wrap:balance;
-  }
-  h1 em{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em;color:var(--amber)}
-  .lede{font-size:clamp(1rem,2.1vw,1.28rem);max-width:56ch;color:#c3bfb6;font-weight:300;margin:0 0 2.4rem}
-  .cta{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
-  .btn{
-    display:inline-block;padding:.72rem 1.4rem;border:1px solid var(--amber);
-    color:var(--ink);background:var(--amber);font-weight:500;font-size:.9rem;border-radius:2px;
-    transition:translate .15s,box-shadow .15s;
-  }
-  .btn:hover{translate:0 -2px;box-shadow:0 6px 22px rgba(255,176,0,.24)}
-  .btn.ghost{background:transparent;color:var(--paper);border-color:var(--line)}
-  .btn.ghost:hover{border-color:var(--paper);box-shadow:none}
+  h1,h2,h3{color:var(--ink);text-wrap:balance;margin:0}
+  h1{font-size:clamp(2.35rem,6.4vw,4.25rem);line-height:1.02;letter-spacing:-.035em;font-weight:600}
+  h2{font-size:clamp(1.55rem,3vw,2.1rem);line-height:1.12;letter-spacing:-.028em;font-weight:600}
+  h3{font-size:1.0625rem;line-height:1.4;letter-spacing:-.012em;font-weight:600}
+  p{margin:0 0 1rem;text-wrap:pretty}
+  p:last-child{margin-bottom:0}
 
-  /* ---- terminal ---- */
-  .term{
-    border:1px solid var(--line);border-radius:4px;background:rgba(6,6,7,.72);
-    backdrop-filter:blur(6px);overflow:hidden;margin:0;
-  }
-  .term-bar{
-    display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;
-    border-bottom:1px solid var(--line);background:rgba(255,255,255,.018);
-  }
-  .term-bar span{width:9px;height:9px;border-radius:50%;background:#2e2e33}
-  .term-title{margin-left:.5rem;font-size:.72rem;color:var(--dim);letter-spacing:.08em}
-  pre{
-    margin:0;padding:1.15rem 1.15rem 1.35rem;overflow-x:auto;font-size:.83rem;line-height:1.75;
-    font-family:inherit;
-  }
-  pre code{font-family:inherit}
-  .p{color:var(--amber)}          /* prompt        */
-  .c{color:var(--paper)}          /* command       */
-  .o{color:var(--dim)}            /* output        */
-  .ok{color:var(--green)}
-  .no{color:var(--red)}
+  a{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em;text-decoration-color:color-mix(in srgb,var(--accent) 38%,transparent);transition:text-decoration-color 140ms var(--ease)}
+  @media (hover:hover){a:hover{text-decoration-color:var(--accent)}}
 
-  /* ---- sections ---- */
-  section{padding:clamp(3rem,7vw,5.5rem) 0;border-top:1px solid var(--line)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+
+  code,kbd,samp,pre{font-family:var(--mono);font-feature-settings:"ss01"}
+  :not(pre)>code{font-size:.875em;color:var(--ink);background:var(--sunken);border:1px solid var(--line);padding:.08em .32em;border-radius:4px;white-space:nowrap}
+
+  .skip{position:absolute;left:var(--gutter);top:.5rem;z-index:20;padding:.55rem 1rem;background:var(--raised);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;font-size:.875rem;transform:translateY(-200%)}
+  .skip:focus-visible{transform:none}
+
   .eyebrow{
-    font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--amber-dim);
-    margin:0 0 1rem;font-weight:500;
+    font-family:var(--mono);font-size:.6875rem;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .85rem;
   }
-  h2{font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.1;letter-spacing:-.03em;font-weight:500;margin:0 0 1.1rem;text-wrap:balance}
-  h3{font-size:1rem;font-weight:600;letter-spacing:-.01em;margin:0 0 .5rem}
-  p{margin:0 0 1rem;max-width:68ch}
-  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(1.5rem,4vw,3.5rem);align-items:start}
-  @media (max-width:860px){.split{grid-template-columns:1fr}}
 
-  /* ---- notes grid ---- */
-  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-  .note{background:var(--ink);padding:1.4rem 1.3rem}
-  .note .n{font-size:.7rem;color:var(--amber-dim);letter-spacing:.14em;display:block;margin-bottom:.7rem}
-  .note p{font-size:.85rem;color:#a8a49b;margin:0}
+  /* masthead */
+  .masthead{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}
+  .masthead .wrap{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;min-height:3.75rem}
+  .wordmark{display:inline-flex;align-items:baseline;gap:.55rem;color:var(--ink);text-decoration:none;font-weight:600;letter-spacing:-.03em;font-size:1.125rem}
+  .wordmark .glyph{width:1.15rem;height:1.15rem;border-radius:6px;background:var(--accent);position:relative;top:.15rem;flex:none;display:grid;align-content:center;justify-items:start;gap:3px;padding-inline:3px}
+  .wordmark .glyph i{display:block;height:2.5px;border-radius:1.25px;background:var(--surface)}
+  .wordmark .glyph i:first-child{width:100%}
+  .wordmark .glyph i:last-child{width:58%;opacity:.6}
+  nav{display:flex;gap:.35rem;align-items:center;font-size:.875rem}
+  nav a{color:var(--muted);text-decoration:none;padding:.4rem .6rem;border-radius:7px;transition:color 140ms var(--ease),background-color 140ms var(--ease)}
+  @media (hover:hover){nav a:hover{color:var(--ink);background:var(--sunken)}}
+  nav .repo{color:var(--ink);font-weight:500}
+  @media (max-width:860px){nav .hide-sm{display:none}}
 
-  /* ---- table ---- */
-  .tbl{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:.5rem}
-  .tbl th{
-    text-align:left;font-weight:500;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--dim);padding:.6rem .8rem;border-bottom:1px solid var(--line);
+  /* hero */
+  .hero{padding:clamp(3rem,7vw,5.5rem) 0 clamp(2.5rem,5vw,4rem)}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(2rem,5vw,4.5rem);align-items:start}
+  @media (max-width:900px){.hero-grid{grid-template-columns:1fr;gap:2.75rem}}
+
+  h1 .file{font-family:var(--mono);font-weight:400;font-size:.72em;letter-spacing:-.01em;color:var(--accent)}
+  .lede{font-size:clamp(1.0625rem,1.5vw,1.2rem);color:var(--text);max-width:46ch;margin:1.35rem 0 2rem}
+
+  .actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+  .btn{
+    display:inline-flex;align-items:center;gap:.45rem;font:inherit;font-size:.9375rem;font-weight:500;
+    padding:.6rem 1.1rem;border-radius:9px;text-decoration:none;cursor:pointer;
+    border:1px solid transparent;transition:background-color 140ms var(--ease),border-color 140ms var(--ease),color 140ms var(--ease),transform 140ms var(--ease);
   }
-  .tbl td{padding:.7rem .8rem;border-bottom:1px solid rgba(38,38,42,.6);color:#bbb7ae}
-  .tbl tr:last-child td{border-bottom:0}
-  .tbl td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tbl tr.hi td{color:var(--paper);background:rgba(255,176,0,.05)}
-  .tbl tr.hi td:last-child{color:var(--amber);font-weight:500}
-  .caption{font-size:.78rem;color:var(--dim);margin-top:1rem;max-width:62ch}
+  .btn-primary{background:var(--ink);color:var(--surface)}
+  .btn-ghost{background:var(--raised);color:var(--ink);border-color:var(--line-strong);box-shadow:var(--shadow-sm)}
+  @media (hover:hover){
+    .btn-primary:hover{background:var(--accent)}
+    .btn-ghost:hover{border-color:var(--ink);transform:translateY(-1px)}
+  }
+  .btn:active{transform:translateY(0) scale(.985)}
 
-  /* ---- roadmap ---- */
-  ul.road{list-style:none;padding:0;margin:0;font-size:.88rem}
-  ul.road li{padding:.5rem 0 .5rem 1.9rem;position:relative;color:#a8a49b;border-bottom:1px solid rgba(38,38,42,.5)}
-  ul.road li:last-child{border-bottom:0}
-  ul.road li::before{position:absolute;left:0;top:.5rem;font-size:.8rem}
-  ul.road li.done{color:var(--paper)}
-  ul.road li.done::before{content:"[x]";color:var(--green)}
-  ul.road li.todo::before{content:"[ ]";color:var(--dim)}
-  ul.road li.block::before{content:"[!]";color:var(--red)}
-  ul.road li.block{color:#c9b9a0}
+  .install{margin-top:1.75rem;display:flex;align-items:center;gap:.5rem;max-width:30rem}
+  .install code{
+    flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-size:.8125rem;color:var(--text);
+    background:var(--sunken);border:1px solid var(--line);padding:.55rem .7rem;border-radius:8px;
+  }
+  .install code::before{content:"$ ";color:var(--faint)}
+  .copy{
+    flex:none;display:inline-flex;align-items:center;justify-content:center;gap:.35rem;
+    font:inherit;font-size:.75rem;font-family:var(--mono);color:var(--muted);cursor:pointer;
+    background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:.55rem .7rem;min-width:5.1rem;
+    transition:color 140ms var(--ease),border-color 140ms var(--ease);
+  }
+  @media (hover:hover){.copy:hover{color:var(--ink);border-color:var(--line-strong)}}
+  .copy[data-copied="true"]{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
 
-  footer{border-top:1px solid var(--line);padding:2.2rem 0 3rem;font-size:.78rem;color:var(--dim)}
-  .foot{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center}
+  /* stat panel */
+  .panel{border:1px solid var(--line);border-radius:14px;background:var(--raised);box-shadow:var(--shadow-md);overflow:hidden}
+  .panel-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:.7rem 1.1rem;
+    border-bottom:1px solid var(--line);font-family:var(--mono);font-size:.6875rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);
+  }
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  .stat{background:var(--raised);padding:1.05rem 1.1rem}
+  .stat dt{font-size:.8125rem;color:var(--muted);margin-bottom:.3rem}
+  .stat dd{margin:0;font-size:1.5rem;font-weight:600;letter-spacing:-.03em;color:var(--ink);line-height:1.1}
+  .stat dd small{font-size:.8125rem;font-weight:400;letter-spacing:0;color:var(--muted);margin-left:.28rem}
+  .panel-note{padding:.8rem 1.1rem;border-top:1px solid var(--line);font-size:.8125rem;color:var(--muted);background:var(--sunken)}
 
-  /* one orchestrated load, staggered */
-  .rise{opacity:0;translate:0 14px;animation:rise .7s cubic-bezier(.2,.7,.3,1) forwards}
-  .rise:nth-child(1){animation-delay:.05s}
-  .rise:nth-child(2){animation-delay:.13s}
-  .rise:nth-child(3){animation-delay:.21s}
-  .rise:nth-child(4){animation-delay:.29s}
-  .rise:nth-child(5){animation-delay:.37s}
-  @keyframes rise{to{opacity:1;translate:0 0}}
+  /* terminal */
+  .term{border:1px solid var(--line);border-radius:14px;background:var(--sunken);overflow:hidden;margin:0;box-shadow:var(--shadow-sm)}
+  .term-head{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 1rem;
+    border-bottom:1px solid var(--line);background:var(--raised);
+    font-family:var(--mono);font-size:.75rem;color:var(--muted);
+  }
+  .term-head .path{color:var(--ink)}
+  .term pre{margin:0;padding:1.15rem 1.15rem 1.3rem;overflow-x:auto;font-size:.8125rem;line-height:1.8;color:var(--text)}
+  .term .p{color:var(--accent);user-select:none}
+  .term .c{color:var(--ink);font-weight:500}
+  .term .o{color:var(--muted)}
+  .term .ok{color:var(--ok)}
+  .term .no{color:var(--bad)}
+  .term .cm{color:var(--faint)}
+  .term .k{color:var(--accent)}
+  .term .v{color:var(--ink);font-weight:500}
+
+  /* sections */
+  section{padding:clamp(3rem,6vw,5rem) 0;border-top:1px solid var(--line);scroll-margin-top:4.5rem}
+  .split{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(1.75rem,4vw,3.5rem);align-items:start}
+  @media (max-width:880px){.split{grid-template-columns:1fr;gap:2rem}}
+  .section-lead{margin-bottom:2rem;max-width:var(--measure)}
+  .section-lead h2+p{margin-top:.85rem}
+
+  /* charts */
+  .bars,.bars dl{margin:0}
+  .bars-caption,.chart-figure figcaption{
+    font-family:var(--mono);font-size:.75rem;color:var(--faint);margin:0 0 1.1rem;
+  }
+  .bar-row{padding:.7rem 0;border-top:1px solid var(--line)}
+  .bar-row:first-of-type{border-top:0;padding-top:0}
+  .bar-row dt{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;font-size:.9375rem;color:var(--text);margin-bottom:.55rem}
+  .bar-row[data-emphasis] dt{color:var(--ink);font-weight:500}
+  .bar-row dd{margin:0}
+  .value{font-family:var(--mono);font-size:.8125rem;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap;min-width:4rem;text-align:right}
+  .bar{display:block;height:10px;border-radius:0 4px 4px 0;background:var(--bar-soft)}
+  .bar[data-emphasis]{background:var(--bar)}
+
+  .chart-figure{margin:0}
+  .stack{display:flex;gap:2px;height:14px;border-radius:0 4px 4px 0;overflow:hidden}
+  .stack span{display:block;height:100%}
+  .stack span:first-child{background:var(--bar)}
+  .stack span:last-child{background:var(--bar-soft);border-radius:0 4px 4px 0}
+  .stack-legend{display:flex;flex-wrap:wrap;gap:1.1rem;margin-top:.65rem;font-size:.8125rem;color:var(--muted)}
+  .stack-legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .stack-legend i{width:9px;height:9px;border-radius:2px;flex:none}
+  .stack-legend .k1{background:var(--bar)}
+  .stack-legend .k2{background:var(--bar-soft)}
+
+  .figure-note{font-size:.875rem;color:var(--muted);margin-top:1.25rem;max-width:62ch}
+  .figure-note strong{color:var(--ink);font-weight:500}
+
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:2.25rem}
+  .metrics div{background:var(--raised);padding:1rem 1.1rem}
+  .metrics dt{font-size:.8125rem;color:var(--muted);margin-bottom:.25rem}
+  .metrics dd{margin:0;font-family:var(--mono);font-size:1.0625rem;color:var(--ink);font-variant-numeric:tabular-nums}
+
+  /* comparison table */
+  .scroller{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--raised);overflow-x:auto;box-shadow:var(--shadow-sm)}
+  .scroller:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .cmp{width:100%;border-collapse:collapse;font-size:.9375rem}
+  .cmp th,.cmp td{text-align:left;padding:.85rem 1.1rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  .cmp thead th{
+    font-family:var(--mono);font-size:.6875rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);background:var(--sunken);white-space:nowrap;
+  }
+  .cmp tbody th{font-weight:500;color:var(--ink);font-family:var(--mono);font-size:.875rem}
+  .cmp td{color:var(--text)}
+  .cmp tbody tr:last-child th,.cmp tbody tr:last-child td{border-bottom:0}
+  .cmp tbody tr[data-pick] th,.cmp tbody tr[data-pick] td{background:var(--accent-quiet)}
+  .sprite{position:absolute;width:0;height:0;overflow:hidden}
+  .p{display:inline-flex;align-items:center;gap:.55rem}
+  .p svg{width:15px;height:15px;flex:none;fill:currentColor;opacity:.7}
+  .cmp .no{color:var(--faint)}
+  .cmp .yes{color:var(--ink)}
+  .state{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap}
+  .state::before{content:"";width:6px;height:6px;border-radius:999px;flex:none;background:currentColor}
+  .state.ok{color:var(--ok)}
+  .state.bad{color:var(--bad)}
+  .scroll-hint{font-size:.8125rem;color:var(--faint);margin-top:.6rem;display:none}
+  @media (max-width:680px){.scroll-hint{display:block}}
+
+  /* candidates — deliberately quieter than the verified table above */
+  .shortlist{margin-top:clamp(2.5rem,5vw,3.75rem);padding-top:clamp(2rem,4vw,2.75rem);border-top:1px solid var(--line)}
+  .shortlist-title{font-size:clamp(1.25rem,2.2vw,1.5rem);letter-spacing:-.022em}
+  .shortlist .scroller{background:transparent;box-shadow:none}
+  .cmp.wip{min-width:46rem}
+  .cmp.wip thead th{background:transparent}
+  .cmp.wip td:last-child{white-space:normal;min-width:21rem;color:var(--muted)}
+
+  /* roadmap */
+  .road{list-style:none;padding:0;margin:0 0 1.75rem;font-size:.9375rem}
+  .road:last-child{margin-bottom:0}
+  .road li{position:relative;padding:.42rem 0 .42rem 1.9rem;color:var(--text)}
+  .road li::before{position:absolute;left:0;top:.42rem;font-family:var(--mono);font-size:.8125rem;color:var(--faint);line-height:1.6}
+  .road li.done{color:var(--muted)}
+  .road li.done::before{content:"[×]";color:var(--ok)}
+  .road li.todo::before{content:"[ ]"}
+  .road li.block{color:var(--ink)}
+  .road li.block::before{content:"[!]";color:var(--bad)}
+  .road-head{font-family:var(--mono);font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 .7rem}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:2rem 0 3rem;font-size:.875rem;color:var(--muted)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:.75rem 2rem;justify-content:space-between;align-items:baseline}
+  footer a{color:var(--muted)}
+  @media (hover:hover){footer a:hover{color:var(--ink)}}
+
+  /* motion */
+  .lift{opacity:0;transform:translateY(10px)}
+  .in .lift,.no-js .lift{opacity:1;transform:none;transition:opacity 460ms var(--ease),transform 460ms var(--ease)}
+  .in .lift:nth-child(2){transition-delay:60ms}
+  .in .lift:nth-child(3){transition-delay:120ms}
+  .in .lift:nth-child(4){transition-delay:180ms}
+  .in .lift:nth-child(5){transition-delay:240ms}
+
+  .reveal{opacity:0;transform:translateY(12px);transition:opacity 500ms var(--ease-soft),transform 500ms var(--ease-soft)}
+  .reveal.in{opacity:1;transform:none}
+  .no-js .reveal{opacity:1;transform:none}
+
+  .bar,.stack{clip-path:inset(0 100% 0 0);transition:clip-path 620ms var(--ease-soft)}
+  .in .bar,.in .stack,.no-js .bar,.no-js .stack{clip-path:inset(0 0 0 0)}
+  .in .bar{transition-delay:calc(var(--i,0) * 70ms)}
+
   @media (prefers-reduced-motion:reduce){
-    .rise{animation:none;opacity:1;translate:none}
-    .logo .caret{animation:none}
+    .lift,.reveal{opacity:1;transform:none;transition:opacity 140ms linear}
+    .bar,.stack{clip-path:none;transition:none}
   }
 </style>
 </head>
-<body>
+<body class="no-js">
 
-<header>
-  <div class="wrap bar">
-    <div class="logo">layby<span class="caret">_</span></div>
-    <nav>
-      <a href="#how">How</a>
-      <a href="#measured">Measured</a>
-      <a href="#providers">Providers</a>
-      <a href="#design">Design</a>
-      <a href="https://github.com/ChiragAgg5k/layby">GitHub</a>
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><symbol id="i-docker" viewBox="0 0 24 24"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288Z"/></symbol><symbol id="i-digitalocean" viewBox="0 0 24 24"><path d="M12.04 0C5.408-.02.005 5.37.005 11.992h4.638c0-4.923 4.882-8.731 10.064-6.855a6.95 6.95 0 014.147 4.148c1.889 5.177-1.924 10.055-6.84 10.064v-4.61H7.391v4.623h4.61V24c7.86 0 13.967-7.588 11.397-15.83-1.115-3.59-3.985-6.446-7.575-7.575A12.8 12.8 0 0012.039 0zM7.39 19.362H3.828v3.564H7.39zm-3.563 0v-2.978H.85v2.978z"/></symbol><symbol id="i-fly" viewBox="0 0 24 24"><path d="M11.987 0c-2.45-.01-5.002.925-6.541 2.897-1.17 1.502-1.664 3.474-1.49 5.356.29 2.112 1.476 3.96 2.676 5.672a41.5 41.5 0 0 0 4.216 4.831c-1.063.832-1.943 2.286-1.357 3.644.821 2.32 4.665 2.05 5.122-.372.39-1.288-.694-2.533-1.428-3.309 2.388-2.431 4.706-5.036 6.17-8.145.595-1.32.902-2.802.614-4.24-.28-2.341-1.823-4.473-3.967-5.46C14.76.266 13.364.016 11.987 0m-.236 1.577v15.534C9.881 13.483 7.724 9.266 8.73 5.069c.35-1.539 1.253-3.309 3.02-3.492m1.996.04c1.534.357 3.031 1.096 3.906 2.48 1.3 1.93 1.318 4.55.1 6.521-1.268 2.395-3.06 4.463-4.916 6.415 1.472-2.974 3.074-6.106 3.182-9.5-.043-2.08-.438-4.612-2.272-5.916M11.97 20.103c.848.342 1.597 1.983.153 2.173-.664.15-1.367-.599-.995-1.222.213-.355.488-.73.842-.95"/></symbol><symbol id="i-ec2" viewBox="0 0 24 24"><path d="M6.763 10.036c0 .296.032.535.088.71.064.176.144.368.256.576.04.063.056.127.056.183 0 .08-.048.16-.152.24l-.503.335a.383.383 0 0 1-.208.072c-.08 0-.16-.04-.239-.112a2.47 2.47 0 0 1-.287-.375 6.18 6.18 0 0 1-.248-.471c-.622.734-1.405 1.101-2.347 1.101-.67 0-1.205-.191-1.596-.574-.391-.384-.59-.894-.59-1.533 0-.678.239-1.23.726-1.644.487-.415 1.133-.623 1.955-.623.272 0 .551.024.846.064.296.04.6.104.918.176v-.583c0-.607-.127-1.03-.375-1.277-.255-.248-.686-.367-1.3-.367-.28 0-.568.031-.863.103-.295.072-.583.16-.862.272a2.287 2.287 0 0 1-.28.104.488.488 0 0 1-.127.023c-.112 0-.168-.08-.168-.247v-.391c0-.128.016-.224.056-.28a.597.597 0 0 1 .224-.167c.279-.144.614-.264 1.005-.36a4.84 4.84 0 0 1 1.246-.151c.95 0 1.644.216 2.091.647.439.43.662 1.085.662 1.963v2.586zm-3.24 1.214c.263 0 .534-.048.822-.144.287-.096.543-.271.758-.51.128-.152.224-.32.272-.512.047-.191.08-.423.08-.694v-.335a6.66 6.66 0 0 0-.735-.136 6.02 6.02 0 0 0-.75-.048c-.535 0-.926.104-1.19.32-.263.215-.39.518-.39.917 0 .375.095.655.295.846.191.2.47.296.838.296zm6.41.862c-.144 0-.24-.024-.304-.08-.064-.048-.12-.16-.168-.311L7.586 5.55a1.398 1.398 0 0 1-.072-.32c0-.128.064-.2.191-.2h.783c.151 0 .255.025.31.08.065.048.113.16.16.312l1.342 5.284 1.245-5.284c.04-.16.088-.264.151-.312a.549.549 0 0 1 .32-.08h.638c.152 0 .256.025.32.08.063.048.12.16.151.312l1.261 5.348 1.381-5.348c.048-.16.104-.264.16-.312a.52.52 0 0 1 .311-.08h.743c.127 0 .2.065.2.2 0 .04-.009.08-.017.128a1.137 1.137 0 0 1-.056.2l-1.923 6.17c-.048.16-.104.263-.168.311a.51.51 0 0 1-.303.08h-.687c-.151 0-.255-.024-.32-.08-.063-.056-.119-.16-.15-.32l-1.238-5.148-1.23 5.14c-.04.16-.087.264-.15.32-.065.056-.177.08-.32.08zm10.256.215c-.415 0-.83-.048-1.229-.143-.399-.096-.71-.2-.918-.32-.128-.071-.215-.151-.247-.223a.563.563 0 0 1-.048-.224v-.407c0-.167.064-.247.183-.247.048 0 .096.008.144.024.048.016.12.048.2.08.271.12.566.215.878.279.319.064.63.096.95.096.502 0 .894-.088 1.165-.264a.86.86 0 0 0 .415-.758.777.777 0 0 0-.215-.559c-.144-.151-.416-.287-.807-.415l-1.157-.36c-.583-.183-1.014-.454-1.277-.813a1.902 1.902 0 0 1-.4-1.158c0-.335.073-.63.216-.886.144-.255.335-.479.575-.654.24-.184.51-.32.83-.415.32-.096.655-.136 1.006-.136.175 0 .359.008.535.032.183.024.35.056.518.088.16.04.312.08.455.127.144.048.256.096.336.144a.69.69 0 0 1 .24.2.43.43 0 0 1 .071.263v.375c0 .168-.064.256-.184.256a.83.83 0 0 1-.303-.096 3.652 3.652 0 0 0-1.532-.311c-.455 0-.815.071-1.062.223-.248.152-.375.383-.375.71 0 .224.08.416.24.567.159.152.454.304.877.44l1.134.358c.574.184.99.44 1.237.767.247.327.367.702.367 1.117 0 .343-.072.655-.207.926-.144.272-.336.511-.583.703-.248.2-.543.343-.886.447-.36.111-.734.167-1.142.167zM21.698 16.207c-2.626 1.94-6.442 2.969-9.722 2.969-4.598 0-8.74-1.7-11.87-4.526-.247-.223-.024-.527.272-.351 3.384 1.963 7.559 3.153 11.877 3.153 2.914 0 6.114-.607 9.06-1.852.439-.2.814.287.383.607zM22.792 14.961c-.336-.43-2.22-.207-3.074-.103-.255.032-.295-.192-.063-.36 1.5-1.053 3.967-.75 4.254-.399.287.36-.08 2.826-1.485 4.007-.215.184-.423.088-.327-.151.32-.79 1.03-2.57.695-2.994z"/></symbol><symbol id="i-gce" viewBox="0 0 24 24"><path d="M12.19 2.38a9.344 9.344 0 0 0-9.234 6.893c.053-.02-.055.013 0 0-3.875 2.551-3.922 8.11-.247 10.941l.006-.007-.007.03a6.717 6.717 0 0 0 4.077 1.356h5.173l.03.03h5.192c6.687.053 9.376-8.605 3.835-12.35a9.365 9.365 0 0 0-2.821-4.552l-.043.043.006-.05A9.344 9.344 0 0 0 12.19 2.38zm-.358 4.146c1.244-.04 2.518.368 3.486 1.15a5.186 5.186 0 0 1 1.862 4.078v.518c3.53-.07 3.53 5.262 0 5.193h-5.193l-.008.009v-.04H6.785a2.59 2.59 0 0 1-1.067-.23h.001a2.597 2.597 0 1 1 3.437-3.437l3.013-3.012A6.747 6.747 0 0 0 8.11 8.24c.018-.01.04-.026.054-.023a5.186 5.186 0 0 1 3.67-1.69z"/></symbol><symbol id="i-linode" viewBox="0 0 24 24"><path d="M22.006 10.684a.15.15 0 0 0-.07-.15l-3.261-1.821a.14.14 0 0 0-.14 0l-2.771 1.69a.17.17 0 0 0-.07.13v1.451l-1.13-.74a.14.14 0 0 0-.15 0l-1.62 1-.071-1.64a.19.19 0 0 0-.07-.12l-1.65-1.09 1.51-.781a.16.16 0 0 0 .08-.14l-.27-6.272a.16.16 0 0 0-.08-.13L8 0h-.1L2.08 1.81A.16.16 0 0 0 2 2l1.27 6.233a.22.22 0 0 0 0 .08l1.83 1.38-1.26.6a.16.16 0 0 0-.08.17l1 4.702a.18.18 0 0 0 0 .07L6 16.375l-.8.49a.15.15 0 0 0-.06.16l.75 3.642a.11.11 0 0 0 0 .07l3.002 3.221a.14.14 0 0 0 .2 0l3.921-3.121a.16.16 0 0 0 .06-.12l-.07-2.12 1.32 1.1a.14.14 0 0 0 .18 0l3.142-2.511a.24.24 0 0 0 .06-.11l.09-1.57 1 .67a.14.14 0 0 0 .17 0l2.571-2.001a.14.14 0 0 0 .05-.1zm-9.623.15l.07 1.57.12 2.781-4.231 2.871-.66-4.532zm-.35-8.423l.25 5.912-5.002 2.59-.9-6.321zM3.54 8.123L2.33 2.26l3.74 2.32.931 6.203-1.58-1.2zM5 15.055l-.88-4.261 3.281 2.74.6 4.382-1.68-1.62zm1.14 5.512l-.65-3.141 2.892 2.85.47 3.162zm3.002 3l-.49-3.33 4.001-2.871.14 3.28zm3.861-5.36v-1.081a.16.16 0 0 0-.05-.11l-1.13-.92 1-.7a.14.14 0 0 0 .06-.12v-.261l1.39 1.06v3.211zm4.442-1.201l-2.861 2.28v-3.22l3.07-2.201zm1.29-1.21l-.9-.631.09-1.59a.11.11 0 0 0 0-.06.1.1 0 0 0 0-.05l-1.93-1.27v-1.391l3 1.89zm2.55-1.861l-2.28 1.81.26-3.06 2.431-1.681z"/></symbol><symbol id="i-vultr" viewBox="0 0 24 24"><path d="M8.36 2.172A1.194 1.194 0 007.348 1.6H1.2A1.2 1.2 0 000 2.8a1.211 1.211 0 00.182.64l11.6 18.4a1.206 1.206 0 002.035 0l3.075-4.874a1.229 1.229 0 00.182-.64 1.211 1.211 0 00-.182-.642zm10.349 8.68a1.206 1.206 0 002.035 0L21.8 9.178l2.017-3.2a1.211 1.211 0 00.183-.64 1.229 1.229 0 00-.183-.64l-1.6-2.526a1.206 1.206 0 00-1.016-.571h-6.148a1.2 1.2 0 00-1.201 1.2 1.143 1.143 0 00.188.64z"/></symbol><symbol id="i-hetzner" viewBox="0 0 24 24"><path d="M0 0v24h24V0H0zm4.602 4.025h2.244c.509 0 .716.215.716.717v5.64h8.883v-5.64c0-.509.215-.717.717-.717h2.229c.5 0 .71.23.724.717v14.516c0 .509-.215.717-.717.717h-2.23c-.51 0-.717-.215-.717-.717v-5.735H7.562v5.735c0 .516-.215.717-.716.717H4.602c-.51 0-.717-.208-.717-.717V4.742c0-.509.207-.717.717-.717z"/></symbol></svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="wordmark" href="/"><span class="glyph" aria-hidden="true"><i></i><i></i></span>layby</a>
+    <nav aria-label="Sections">
+      <a class="hide-sm" href="#blueprint">Blueprint</a>
+      <a class="hide-sm" href="#measured">Measured</a>
+      <a class="hide-sm" href="#providers">Providers</a>
+      <a class="repo" href="https://github.com/ChiragAgg5k/layby" target="_blank" rel="noopener noreferrer">GitHub&nbsp;↗</a>
     </nav>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="hero">
-    <div class="status rise"><span class="dot"></span> verified on digitalocean · render blocked on billing</div>
-    <h1 class="rise">Disposable sandboxes<br>from a <em>mise.toml</em></h1>
-    <p class="lede rise">Cloud agent products hand you someone else's environment on someone else's machine. This inverts it: the environment is a file in your repo, and the machine is whichever provider you point at.</p>
-    <div class="cta rise">
-      <a class="btn" href="https://github.com/ChiragAgg5k/layby">View source</a>
-      <a class="btn ghost" href="#how">How it works</a>
+<main id="main">
+
+<div class="wrap hero">
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <h1 class="lift">Disposable sandboxes from a <span class="file">mise.toml</span></h1>
+      <p class="lede lift">Cloud agent products hand you someone else's environment on someone else's machine. This inverts it: the environment is a file in your repo, and the machine is whichever provider you point at.</p>
+      <div class="actions lift">
+        <a class="btn btn-primary" href="https://github.com/ChiragAgg5k/layby" target="_blank" rel="noopener noreferrer">View Source</a>
+        <a class="btn btn-ghost" href="#blueprint">See the Blueprint</a>
+      </div>
+      <div class="install lift">
+        <code id="install-cmd">go build -o bin/layby ./cmd/layby</code>
+        <button class="copy" type="button" data-copy="#install-cmd" aria-label="Copy the build command">
+          <span data-copy-label>Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel reveal" role="group" aria-labelledby="spec-head">
+      <p class="panel-head" id="spec-head"><span>Measured, not estimated</span><span>node 22 · jq 1.7.1</span></p>
+      <dl class="stats">
+        <div class="stat"><dt>Cold boot, DigitalOcean</dt><dd>2m 45s</dd></div>
+        <div class="stat"><dt>Warm provision, local</dt><dd>485<small>ms</small></dd></div>
+        <div class="stat"><dt>Published image</dt><dd>154<small>MB</small></dd></div>
+        <div class="stat"><dt>Instance cost</dt><dd>$0.0089<small>/hr</small></dd></div>
+      </dl>
+      <p class="panel-note">Every figure on this page came off a real run. The sandbox behind the transcript below cost well under a cent.</p>
     </div>
   </div>
 </div>
 
 <div class="wrap">
-  <figure class="term rise">
-    <div class="term-bar"><span></span><span></span><span></span><div class="term-title">~/project — provider = "digitalocean"</div></div>
+  <figure class="term reveal">
+    <figcaption class="term-head"><span class="path">~/project</span><span>provider = digitalocean</span></figcaption>
     <pre><code><span class="p">$</span> <span class="c">layby up</span>
 <span class="o">image  ghcr.io/chiragagg5k/layby-base:5910fe84f5531946 (cached)</span>
-<span class="o">ready  b41a0ccd in <span class="ok">2m44.945s</span></span>
+<span class="o">ready  b41a0ccd in </span><span class="ok">2m44.945s</span>
 <span class="o">expires 3:53PM</span>
 <span class="ok">b41a0ccd</span>
 
@@ -216,7 +377,7 @@
 
 <span class="p">$</span> <span class="c">layby run b41a0ccd -- 'hostname; head -1 /etc/os-release'</span>
 <span class="o">ccb57242a3e7</span>
-<span class="o">PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"   <span class="mark"># our image, not the host</span></span>
+<span class="o">PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"</span>   <span class="cm"># our image, not the host</span>
 
 <span class="p">$</span> <span class="c">layby run b41a0ccd -- 'exit 42'; echo $?</span>
 <span class="o">42</span>
@@ -224,7 +385,6 @@
 <span class="p">$</span> <span class="c">layby doctor</span>
 <span class="o">provider digitalocean: 1 running</span>
 <span class="o">provider local: 0 running</span>
-<span class="o">provider render: 0 running</span>
 <span class="ok">all clear</span>
 
 <span class="p">$</span> <span class="c">layby down -all</span>
@@ -234,141 +394,235 @@
 </div>
 
 <div class="wrap">
-  <section id="how">
+
+  <section id="blueprint">
     <div class="split">
-      <div>
+      <div class="reveal">
         <p class="eyebrow">The blueprint</p>
         <h2>It's just a mise.toml</h2>
-        <p><code class="mark">[tools]</code> and <code class="mark">[env]</code> are ordinary <a href="https://mise.jdx.dev/">mise</a> and work with a plain <code>mise install</code> on your laptop. The <code class="mark">[sandbox]</code> table is a namespaced extension that mise ignores.</p>
-        <p class="dim" style="font-size:.85rem">One file configures your machine and the remote one. No Dockerfile per stack — the toolchain <em>is</em> the declaration.</p>
+        <p style="margin-top:.85rem"><code>[tools]</code> and <code>[env]</code> are ordinary <a href="https://mise.jdx.dev/" target="_blank" rel="noopener noreferrer">mise</a>, and they still work with a plain <code>mise install</code> on your laptop. The <code>[sandbox]</code> table is a namespaced extension that mise ignores.</p>
+        <p>One file configures your machine and the remote one. There is no Dockerfile per stack, because the toolchain is the declaration.</p>
       </div>
-      <figure class="term">
-        <div class="term-bar"><span></span><span></span><span></span><div class="term-title">mise.toml</div></div>
-        <pre><code><span class="mark">[tools]</span>
-node = <span class="ok">"22"</span>
-jq   = <span class="ok">"1.7.1"</span>
+      <figure class="term reveal">
+        <figcaption class="term-head"><span class="path">mise.toml</span><span>15 lines</span></figcaption>
+        <pre><code><span class="k">[tools]</span>
+node = <span class="v">"22"</span>
+jq   = <span class="v">"1.7.1"</span>
 
-<span class="mark">[env]</span>
-NODE_ENV = <span class="ok">"development"</span>
+<span class="k">[env]</span>
+NODE_ENV = <span class="v">"development"</span>
 
-<span class="mark">[sandbox]</span>
-provider     = <span class="ok">"local"</span>   <span class="o"># local | render | ssh</span>
-ttl          = <span class="ok">"1h"</span>      <span class="o"># destroys itself</span>
-idle_timeout = <span class="ok">"20m"</span>
+<span class="k">[sandbox]</span>
+provider     = <span class="v">"local"</span>   <span class="o"># local | digitalocean</span>
+ttl          = <span class="v">"1h"</span>      <span class="o"># destroys itself</span>
+idle_timeout = <span class="v">"20m"</span>
 
-<span class="mark">[sandbox.hooks]</span>
-setup  = [<span class="ok">"npm ci"</span>]
-verify = [<span class="ok">"npm test"</span>]</code></pre>
+<span class="k">[sandbox.hooks]</span>
+setup  = [<span class="v">"npm ci"</span>]
+verify = [<span class="v">"npm test"</span>]</code></pre>
       </figure>
     </div>
   </section>
 
   <section id="measured">
-    <p class="eyebrow">Measured, not estimated</p>
-    <h2>The image is the cache</h2>
-    <p>Running <code>mise install</code> at boot costs minutes on every start — and real money on a metered provider. The toolchain is baked into an image at build time instead, so booting is a pull. The expensive install runs once per unique build definition, on whichever builder is cheapest.</p>
-    <table class="tbl">
-      <thead><tr><th>Operation</th><th>Time</th></tr></thead>
-      <tbody>
-        <tr><td>Cold build — local Docker, Apple Silicon, empty layer cache</td><td>3m 31s</td></tr>
-        <tr><td>Rebuild — base layers cached</td><td>1m 47s</td></tr>
-        <tr class="hi"><td>Cold build — GitHub Actions, linux/amd64, pushed to GHCR</td><td>46s</td></tr>
-        <tr class="hi"><td>Warm provision — local driver, image present</td><td>485ms</td></tr>
-        <tr class="hi"><td>Cold boot — DigitalOcean, clean slate to usable sandbox</td><td>2m 45s</td></tr>
-        <tr><td>Published image size</td><td>154 MB</td></tr>
-      </tbody>
-    </table>
-    <p class="caption">Building in CI rather than locally is <span class="mark">4.6× faster</span> than the same cold build on an M-series laptop — and free. The DigitalOcean figure is the honest end-to-end cost on real infrastructure: droplet provision (~45s), boot, then cloud-init pulling 154 MB and starting the container. Measured from a clean slate in <code>blr1</code> on <code>s-1vcpu-1gb</code> at <span class="mark">$0.0089/hr</span> — that sandbox cost well under a cent. Once running, exec is instant: connections multiplex, so a burst of twelve commands reuses one TCP session.</p>
+    <div class="section-lead reveal">
+      <p class="eyebrow">Where the time goes</p>
+      <h2>The image is the cache</h2>
+      <p>Running <code>mise install</code> at boot costs minutes on every start, and real money on a metered provider. The toolchain is baked into an image at build time instead, so booting is a pull. The expensive install runs once per unique build definition, on whichever builder is cheapest.</p>
+    </div>
+
+    <div class="split">
+      <div class="reveal">
+        <figure class="bars">
+          <figcaption class="bars-caption">Image build — node 22 + jq 1.7.1</figcaption>
+          <dl>
+          <div class="bar-row">
+            <dt>Cold build, local Docker on Apple Silicon <span class="value">3m 31s</span></dt>
+            <dd><span class="bar" style="width:100%;--i:0"></span></dd>
+          </div>
+          <div class="bar-row">
+            <dt>Rebuild, base layers cached <span class="value">1m 47s</span></dt>
+            <dd><span class="bar" style="width:50.7%;--i:1"></span></dd>
+          </div>
+          <div class="bar-row" data-emphasis>
+            <dt>Cold build on GitHub Actions, pushed to GHCR <span class="value">46s</span></dt>
+            <dd><span class="bar" data-emphasis style="width:21.8%;--i:2"></span></dd>
+          </div>
+          </dl>
+        </figure>
+        <p class="figure-note">Building in CI rather than locally is <strong>4.6× faster</strong> than the same cold build on an M-series laptop — and it is free. The tag hashes the whole build definition, not just the toolchain, so a corrected Dockerfile can never silently reuse a stale image.</p>
+      </div>
+
+      <div class="reveal">
+        <figure class="chart-figure">
+          <figcaption>Cold boot on DigitalOcean — 2m 45s</figcaption>
+          <span class="stack" role="img" aria-label="Instance provision about 45 seconds, then boot, image pull and container start about 2 minutes.">
+            <span style="width:27%"></span><span style="width:73%"></span>
+          </span>
+        </figure>
+        <p class="stack-legend">
+          <span><i class="k1" aria-hidden="true"></i> Instance provision · ~45s</span>
+          <span><i class="k2" aria-hidden="true"></i> Boot, 154 MB pull, container start · ~2m</span>
+        </p>
+        <p class="figure-note">Measured from a clean slate in <code>blr1</code> on <code>s-1vcpu-1gb</code>. Once the sandbox is running, exec is instant: connections multiplex, so a burst of twelve commands reuses one TCP session. The 485ms local figure is a floor, not a forecast — it skips both the registry pull and VM scheduling, which are exactly what dominate on a real provider.</p>
+      </div>
+    </div>
+
+    <dl class="metrics reveal">
+      <div><dt>Published image</dt><dd>154 MB</dd></div>
+      <div><dt>Instance type</dt><dd>s-1vcpu-1gb</dd></div>
+      <div><dt>Region</dt><dd>blr1</dd></div>
+      <div><dt>Cost of that sandbox</dt><dd>&lt; $0.01</dd></div>
+    </dl>
   </section>
 
   <section id="providers">
-    <p class="eyebrow">Pick your machine</p>
-    <h2>Three providers, honestly compared</h2>
-    <table class="tbl">
-      <thead><tr><th>Provider</th><th>Billing</th><th>Boot</th><th>Snapshot</th><th>Per-sandbox keys</th></tr></thead>
-      <tbody>
-        <tr><td><code>local</code></td><td>free</td><td>485ms</td><td>no</td><td>n/a</td></tr>
-        <tr class="hi"><td><code>digitalocean</code></td><td>hourly, $0.0089/hr</td><td>2m 45s</td><td>yes</td><td>yes</td></tr>
-        <tr><td><code>render</code></td><td>plan-based</td><td>deploy-shaped</td><td>no</td><td>no — account-level</td></tr>
-      </tbody>
-    </table>
-    <p class="caption">DigitalOcean wins by some distance. Hourly billing makes a per-task sandbox cost a fraction of a cent, tags are first-class so reconciliation never leans on a naming convention, and keys attach per droplet. Render has no create-a-machine primitive at all — a sandbox there is a background worker, and every one of them is reachable by every SSH key on the account.</p>
-    <p class="caption">One gap is deliberate: there is <span class="mark">no true in-sandbox self-destruct</span>. Doing it properly means writing an API token onto a box running untrusted agent code, and a full-scope token is worse than an occasional orphan. cloud-init powers the droplet off at TTL, but that stops the workload, not the billing — <code>layby down -expired</code> is what stops the meter.</p>
-  </section>
+    <div class="section-lead reveal">
+      <p class="eyebrow">Pick your machine</p>
+      <h2>Two providers, both verified</h2>
+      <p>Nothing ships here until it has provisioned, executed, and torn down a real sandbox. Two have. Everything else is on the shortlist below.</p>
+    </div>
 
-  <section id="design">
-    <p class="eyebrow">Load-bearing decisions</p>
-    <h2>Every one of these was a bug first</h2>
-    <p>Nine so far. These six changed the design rather than just the code — and the first was found only by running the thing on real infrastructure, not by any test that existed at the time.</p>
-    <div class="notes">
-      <div class="note">
-        <span class="n">01 — ISOLATION</span>
-        <h3>Commands ran on the host</h3>
-        <p><code>ssh</code> concatenates its trailing arguments into one remote shell string, so <code>bash -c "a; b"</code> arrived as <code>bash -c a; b</code> and ran <code>b</code> on the droplet host. It failed <em>quietly</em>: the sandbox's jq 1.7.1 silently became the host's 1.6.</p>
+    <div class="scroller reveal" tabindex="0" role="region" aria-label="Provider comparison, scrollable">
+      <table class="cmp">
+        <thead>
+          <tr><th scope="col">Provider</th><th scope="col">Billing</th><th scope="col">Boot</th><th scope="col">Snapshot</th><th scope="col">Per-sandbox keys</th><th scope="col">Best for</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-docker"/></svg>local</span></th><td>Free</td><td>485 ms</td><td class="no">No</td><td class="no">n/a</td><td>Anything that fits on the machine in front of you</td>
+          </tr>
+          <tr data-pick>
+            <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-digitalocean"/></svg>digitalocean</span></th><td>Hourly, from $0.0089/hr</td><td>2m 45s</td><td class="yes">Yes</td><td class="yes">Yes</td><td>Sandboxes that outlive your laptop</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="scroll-hint">Scroll the table sideways to see every column.</p>
+
+    <div class="split" style="margin-top:2.25rem">
+      <p class="figure-note reveal" style="margin-top:0">DigitalOcean earns the default for remote work. Hourly billing makes a per-task sandbox cost a fraction of a cent, tags are first-class so reconciliation never leans on a naming convention, and keys attach per instance. Local Docker stays the fast path — 485 ms and no meter running.</p>
+      <p class="figure-note reveal" style="margin-top:0">One gap is deliberate: there is <strong>no true in-sandbox self-destruct</strong>. Doing it properly means writing an API token onto a box running untrusted agent code, and a full-scope token is worse than an occasional orphan. cloud-init powers the instance off at TTL, but a stopped instance still bills for its disk — <code>layby down -expired</code> is what stops the meter.</p>
+    </div>
+
+    <div class="shortlist reveal">
+      <div class="section-lead" style="margin-bottom:1.5rem">
+        <p class="eyebrow">Work in progress</p>
+        <h3 class="shortlist-title">The shortlist</h3>
+        <p class="figure-note" style="margin-top:.6rem">None of these are written yet. A provider makes the list when it has a real create-a-machine primitive, billing granular enough that a ten-minute sandbox costs ten minutes, and keys that attach per instance rather than per account. Ranked by how well they clear that bar.</p>
       </div>
-      <div class="note">
-        <span class="n">02 — READINESS</span>
-        <h3>The poller DoS'd itself</h3>
-        <p>The Docker image ships <code>ufw 22/tcp LIMIT</code>, rejecting an IP after six connections in thirty seconds. Polling every 250ms tripped it in two. The refusals looked exactly like a droplet that never booted.</p>
+
+      <div class="scroller" tabindex="0" role="region" aria-label="Candidate providers, scrollable">
+        <table class="cmp wip">
+          <thead>
+            <tr><th scope="col">Provider</th><th scope="col">Create primitive</th><th scope="col">Billing granularity</th><th scope="col">The catch</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-fly"/></svg>fly</span></th><td>Machines API</td><td>Per-second while running</td><td>A stopped machine still bills its rootfs — the same trap as a stopped instance</td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-ec2"/></svg>ec2</span></th><td><code>RunInstances</code></td><td>Per-second, 60s minimum</td><td>Tags and per-instance keys work like DigitalOcean's; the API surface is the cost</td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-gce"/></svg>gce</span></th><td><code>instances.insert</code></td><td>Per-second, 60s minimum</td><td>Same shape as EC2, same weight</td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-linode"/></svg>linode</span></th><td><code>POST /linode/instances</code></td><td>Hourly, billed only while the instance exists</td><td>No partial-hour minimum, but no per-second either</td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-vultr"/></svg>vultr</span></th><td><code>POST /instances</code></td><td>Hourly</td><td>Hourly like DigitalOcean, without the snapshot story</td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="p"><svg aria-hidden="true" focusable="false"><use href="#i-hetzner"/></svg>hetzner</span></th><td><code>POST /servers</code></td><td>Hourly, partial hours rounded up</td><td>Cheapest per hour on the list, but a three-minute sandbox costs a full one</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="note">
-        <span class="n">03 — TRANSPORT</span>
-        <h3>Multiplex, or lock yourself out</h3>
-        <p>Every exec opened a fresh connection and hit the same limit after six commands — an agent running a handful of steps would be locked out of its own sandbox. One control master fixes it, and makes exec instant.</p>
-      </div>
-      <div class="note">
-        <span class="n">04 — CACHE KEY</span>
-        <h3>Hash the whole build definition</h3>
-        <p>Keying the image tag on the toolchain alone meant a corrected Dockerfile silently reused the stale image. The fix appeared to do nothing — twice — before the cause was obvious.</p>
-      </div>
-      <div class="note">
-        <span class="n">05 — PATH</span>
-        <h3>Exported twice, on purpose</h3>
-        <p>A login shell sources <code>/etc/profile</code>, which resets <code>PATH</code> and discards the image's <code>ENV</code>. Without both, <code>run</code> and <code>shell</code> disagree about whether <code>node</code> exists.</p>
-      </div>
-      <div class="note">
-        <span class="n">06 — TRUTH</span>
-        <h3>The provider, not local state</h3>
-        <p><code>~/.layby/state.json</code> is a cache. A running sandbox with no local record is an orphan. Reconciliation is tag-scoped, so on an account with 402 droplets it sees exactly the ones it created.</p>
-      </div>
+      <p class="scroll-hint">Scroll the table sideways to see every column.</p>
+      <p class="figure-note">Billing models are from each provider's public documentation as of July 2026, not from a run — no sandbox has booted on any of them. The measured columns in the table above exist precisely because published numbers and observed ones disagree.</p>
     </div>
   </section>
 
-  <section>
+  <section id="status">
     <div class="split">
-      <div>
+      <div class="reveal">
         <p class="eyebrow">Status</p>
         <h2>Where it stands</h2>
-        <p>The Docker and DigitalOcean drivers are both verified end to end — provision, exec, env, exit codes, teardown. The Render driver is written but has never booted a sandbox: Render returns <code class="no">HTTP 402</code> until a payment method is on file, and background workers have no free tier.</p>
-        <p class="dim" style="font-size:.85rem">Exit codes pass through, so an agent can run <code>layby run $ID -- pytest</code> and branch on <code>$?</code>. Progress goes to stderr; stdout stays clean.</p>
-        <p class="dim" style="font-size:.85rem">Next lever on speed: a snapshot taken after the image pull would cut that 2m45s to roughly droplet-create time alone.</p>
+        <p style="margin-top:.85rem">The Docker and DigitalOcean drivers are both verified end to end — provision, exec, env, exit codes, teardown. Everything on the shortlist is unwritten, and the CLI says so up front rather than failing halfway through a provision.</p>
+        <p>Exit codes pass through, so an agent can run <code>layby run $ID -- pytest</code> and branch on <code>$?</code>. Progress goes to stderr; stdout stays clean.</p>
+        <p>The next lever on speed is a snapshot taken after the image pull, which would cut that 2m 45s down to roughly instance-create time alone.</p>
       </div>
-      <div>
+      <div class="reveal">
+        <p class="road-head">Shipped</p>
         <ul class="road">
           <li class="done">Blueprint parsing, tool hashing, image pipeline</li>
           <li class="done">Local Docker driver, full lifecycle</li>
           <li class="done">TTL tracking, tag-scoped orphan reconciliation</li>
-          <li class="done">DigitalOcean driver — verified on real infrastructure</li>
-          <li class="done">Render driver — worker from a prebuilt GHCR image</li>
-          <li class="block">Verify Render end to end — blocked on billing</li>
-          <li class="todo">Snapshot after pull — cut cold boot to ~45s</li>
+          <li class="done">DigitalOcean driver, verified on real infrastructure</li>
+        </ul>
+        <p class="road-head">Next</p>
+        <ul class="road">
+          <li class="todo">Snapshot after pull, to cut cold boot to ~45s</li>
           <li class="todo">In-sandbox self-destruct daemon</li>
           <li class="todo">Spend ceiling — refuse <code>up</code> past a budget</li>
-          <li class="todo">SSH driver — point at a box you own</li>
+        </ul>
+        <p class="road-head">Later</p>
+        <ul class="road">
+          <li class="todo">SSH driver — point at a box you already own</li>
+          <li class="todo">Fly and EC2 drivers, off the shortlist above</li>
           <li class="todo">MCP server exposing sandboxes as agent tools</li>
           <li class="todo">Git egress — agent pushes a branch, opens a PR</li>
         </ul>
       </div>
     </div>
   </section>
+
 </div>
+</main>
 
 <footer>
-  <div class="wrap foot">
-    <div>Built with <a href="https://mise.jdx.dev/">mise</a> · Hosted on <a href="https://appwrite.io/products/sites">Appwrite Sites</a></div>
-    <div><a href="https://github.com/ChiragAgg5k/layby">github.com/ChiragAgg5k/layby</a></div>
+  <div class="wrap">
+    <span>Built with <a href="https://mise.jdx.dev/" target="_blank" rel="noopener noreferrer">mise</a> · Hosted on <a href="https://appwrite.io/products/sites" target="_blank" rel="noopener noreferrer">Appwrite Sites</a></span>
+    <span><a href="https://github.com/ChiragAgg5k/layby" target="_blank" rel="noopener noreferrer">github.com/ChiragAgg5k/layby</a> · Updated <time datetime="2026-07-27">27 July 2026</time></span>
   </div>
 </footer>
+
+<script>
+  document.body.classList.remove('no-js');
+
+  // Hero enters on load; everything else enters when it scrolls into view.
+  requestAnimationFrame(() => document.querySelector('.hero-copy').classList.add('in'));
+
+  const observer = new IntersectionObserver((entries, self) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.classList.add('in');
+      self.unobserve(entry.target);
+    }
+  }, {rootMargin: '0px 0px -8% 0px', threshold: 0.15});
+
+  for (const element of document.querySelectorAll('.reveal')) observer.observe(element);
+
+  // Copy the build command.
+  for (const button of document.querySelectorAll('[data-copy]')) {
+    const label = button.querySelector('[data-copy-label]');
+    const source = document.querySelector(button.dataset.copy);
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(source.textContent.trim());
+      } catch {
+        return;
+      }
+      button.dataset.copied = 'true';
+      label.textContent = 'Copied';
+      setTimeout(() => {
+        delete button.dataset.copied;
+        label.textContent = 'Copy';
+      }, 1600);
+    });
+  }
+</script>
 
 </body>
 </html>

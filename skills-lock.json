@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "design-engineering": {
+      "source": "AgentsORG/design-engineering",
+      "sourceType": "github",
+      "skillPath": "skills/design-engineering/SKILL.md",
+      "computedHash": "597b8c9cf063421be48f00fc166251be7e00cf8bfaa449381415a497ad4c9806"
+    }
+  }
+}

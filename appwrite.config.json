@@ -16,7 +16,7 @@
             "installCommand": "",
             "buildCommand": "",
             "outputDirectory": "./",
-            "fallbackFile": "index.html",
+            "fallbackFile": "",
             "startCommand": "",
             "buildSpecification": "s-2vcpu-2gb",
             "runtimeSpecification": "s-0.5vcpu-512mb",

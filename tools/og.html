@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Source for site/og.png — the social preview card.
+  Not served: this lives outside site/ on purpose.
+
+  Regenerate after changing it:
+    npx playwright screenshot --viewport-size=1200,630 \
+      tools/og.html site/og.png
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>layby — og image source</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --sans:"Instrument Sans",system-ui,sans-serif;
+    --mono:"Geist Mono",ui-monospace,Menlo,monospace;
+    --surface:#faf8f5;
+    --ink:#17140f;
+    --text:#3d3830;
+    --muted:#5f5a51;
+    --faint:#6f6a60;
+    --line:rgba(23,20,15,.12);
+    --accent:#a8401c;
+  }
+  body{
+    margin:0;width:1200px;height:630px;overflow:hidden;
+    background:var(--surface);color:var(--text);
+    font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;justify-content:space-between;
+    padding:72px 80px;position:relative;
+  }
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .wordmark{display:inline-flex;align-items:center;gap:14px;font-size:30px;font-weight:600;letter-spacing:-.03em;color:var(--ink)}
+  .glyph{width:30px;height:30px;border-radius:9px;background:var(--accent);display:grid;align-content:center;gap:5px;padding-inline:6px}
+  .glyph i{display:block;height:4px;border-radius:2px;background:var(--surface)}
+  .glyph i:first-child{width:100%}
+  .glyph i:last-child{width:58%;opacity:.6}
+  .host{font-family:var(--mono);font-size:19px;color:var(--faint)}
+
+  h1{
+    margin:0;font-size:86px;line-height:1.04;letter-spacing:-.038em;font-weight:600;
+    color:var(--ink);
+  }
+  h1 .file{font-family:var(--mono);font-weight:400;font-size:.7em;letter-spacing:-.01em;color:var(--accent)}
+
+  .stats{display:flex;gap:64px;border-top:1px solid var(--line);padding-top:26px}
+  .stat dt{font-size:17px;color:var(--muted);margin:0 0 4px}
+  .stat dd{margin:0;font-size:31px;font-weight:600;letter-spacing:-.03em;color:var(--ink);line-height:1.1}
+  .stat dd small{font-size:17px;font-weight:400;letter-spacing:0;color:var(--muted);margin-left:5px}
+</style>
+</head>
+<body>
+
+  <div class="top">
+    <span class="wordmark"><span class="glyph"><i></i><i></i></span>layby</span>
+    <span class="host">layby.appwrite.network</span>
+  </div>
+
+  <h1>Disposable sandboxes<br>from a <span class="file">mise.toml</span></h1>
+
+  <dl class="stats">
+    <div class="stat"><dt>Cold boot, DigitalOcean</dt><dd>2m 45s</dd></div>
+    <div class="stat"><dt>Warm provision, local</dt><dd>485<small>ms</small></dd></div>
+    <div class="stat"><dt>Published image</dt><dd>154<small>MB</small></dd></div>
+    <div class="stat"><dt>Instance cost</dt><dd>$0.0089<small>/hr</small></dd></div>
+  </dl>
+
+</body>
+</html>

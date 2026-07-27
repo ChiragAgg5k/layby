@@ -58,7 +58,7 @@ jobs:
 
       - name: Build and push
         run: |
-          # Render runs amd64; the developer's laptop may not. Build for the
+          # Cloud instances run amd64; the developer's laptop may not. Build for the
           # target platform explicitly rather than inheriting the runner's.
           docker buildx create --use --name layby-builder
           docker buildx build \

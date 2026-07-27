@@ -8,7 +8,6 @@ import (
 	"github.com/chiragaggarwal/layby/internal/provider"
 	"github.com/chiragaggarwal/layby/internal/provider/digitalocean"
 	"github.com/chiragaggarwal/layby/internal/provider/local"
-	"github.com/chiragaggarwal/layby/internal/provider/render"
 )
 
 // drivers is the registry of implemented providers. It lives in the command
@@ -17,7 +16,6 @@ import (
 func drivers() map[string]provider.Provider {
 	return map[string]provider.Provider{
 		blueprint.ProviderLocal:        local.New(),
-		blueprint.ProviderRender:       render.New(),
 		blueprint.ProviderDigitalOcean: digitalocean.New(),
 	}
 }
@@ -28,7 +26,7 @@ func driverFor(name string) (provider.Provider, error) {
 	if driver, found := drivers()[name]; found {
 		return driver, nil
 	}
-	return nil, fmt.Errorf("provider %q is not implemented; available: local, render, digitalocean", name)
+	return nil, fmt.Errorf("provider %q is not implemented; available: local, digitalocean", name)
 }
 
 // sortedDriverNames gives reconciliation a deterministic order so `layby doctor`

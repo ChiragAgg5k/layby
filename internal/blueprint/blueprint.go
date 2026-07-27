@@ -57,7 +57,6 @@ type Hooks struct {
 
 const (
 	ProviderLocal        = "local"
-	ProviderRender       = "render"
 	ProviderDigitalOcean = "digitalocean"
 	ProviderSSH          = "ssh"
 

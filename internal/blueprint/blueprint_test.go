@@ -38,7 +38,7 @@ func TestLoadParsesSandboxTable(t *testing.T) {
 node = "22"
 
 [sandbox]
-provider = "render"
+provider = "digitalocean"
 ttl = "90m"
 packages = ["ripgrep"]
 
@@ -48,7 +48,7 @@ url = "git@github.com:me/thing.git"
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if print.Sandbox.Provider != ProviderRender {
+	if print.Sandbox.Provider != ProviderDigitalOcean {
 		t.Errorf("provider = %q", print.Sandbox.Provider)
 	}
 	if print.Sandbox.TimeToLive.Duration != 90*time.Minute {
